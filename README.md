@@ -65,3 +65,33 @@ https://google.github.io/styleguide/go#normative
 これらのドキュメントでは、「慣用的」という言葉は、Goのコードによく見られるもので、認識しやすい馴染みのあるパターンになったものを指すのに使われています。一般に、慣用的なパターンは、文脈上同じ目的を果たすのであれば、慣用的でないパターンよりも優先されるべきです。
 
 https://google.github.io/styleguide/go#idiomatic
+
+## その他の参考資料
+
+このガイドでは、読者が[Effective Go](https://go.dev/doc/effective_go)に精通していることを前提としています。
+
+以下は、Goのスタイルについて独学したい人や、レビューでリンク可能なコンテキストをさらに提供したいレビュアーのための追加リソースです。Goの可読性プロセスの参加者がこれらのリソースに精通していることは期待されていませんが、可読性のレビューでコンテキストとして使用される可能性があります。
+
+外部参考資料
+
+- [Go Language Specification](https://go.dev/ref/spec)
+- [Go FAQ (日本語版)](https://github.com/toshi0607/Go-FAQ-Japanese-Edition)
+- [Go Memory Model](https://go.dev/ref/mem)
+- [Go Data Structures](https://research.swtch.com/godata)
+- [Go Interfaces](https://research.swtch.com/interfaces)
+- [Go Proverbs](https://go-proverbs.github.io/)
+- Go tips - ご期待ください
+
+Testing-on-the-Toiletの関連記事
+- [TotT: Identifier Naming](https://testing.googleblog.com/2017/10/code-health-identifiernamingpostforworl.html)
+- [TotT: Testing State vs. Testing Interactions](https://testing.googleblog.com/2013/03/testing-on-toilet-testing-state-vs.html)
+- [TotT: Effective Testing](https://testing.googleblog.com/2014/05/testing-on-toilet-effective-testing.html)
+- [TotT: Risk-driven Testing](https://testing.googleblog.com/2014/05/testing-on-toilet-risk-driven-testing.html)
+- [TotT: Change-detector Tests Considered Harmful](https://testing.googleblog.com/2015/01/testing-on-toilet-change-detector-tests.html)
+
+その他の外部著作物
+- [Go and Dogma](https://research.swtch.com/dogma)
+- [Less is exponentially more](https://commandcenter.blogspot.com/2012/06/less-is-exponentially-more.html)
+- [Esmerelda’s Imagination](https://commandcenter.blogspot.com/2011/12/esmereldas-imagination.html)
+- [Regular expressions for parsing](https://commandcenter.blogspot.com/2011/08/regular-expressions-in-lexing-and.html)
+- [Gofmt’s style is no one’s favorite, yet Gofmt is everyone’s favorite (YouTube)](https://www.youtube.com/watch?v=PAAkCSZUG1c&t=8m43s)
