@@ -1,3 +1,9 @@
+- [Google-Go-Style-Japanese-Edition](#google-go-style-japanese-edition)
+  - [概要](#概要)
+  - [ドキュメント](#ドキュメント)
+  - [定義](#定義)
+  - [その他の参考資料](#その他の参考資料)
+
 # Google-Go-Style-Japanese-Edition
 
 Googleの[Go Style](https://google.github.io/styleguide/go/)の日本語版です。
