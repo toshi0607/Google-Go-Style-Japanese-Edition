@@ -1,0 +1,1 @@
+# Google-Go-Style-Japanese-Edition
