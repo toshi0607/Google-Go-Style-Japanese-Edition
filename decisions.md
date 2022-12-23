@@ -17,6 +17,7 @@
     - [コメント行の長さ](#コメント行の長さ)
     - [ドキュメントコメント](#ドキュメントコメント)
     - [コメント文](#コメント文)
+    - [例](#例)
 
 # Goスタイル決定事項
 
@@ -408,3 +409,9 @@ type Server struct {
     PageLength      int    // lines per page when printing (optional; default: 20)
 }
 ```
+
+### 例
+
+パッケージは、その使用目的を明確にドキュメント化する必要があります。[実行可能な例](http://blog.golang.org/examples)を提供するようにしましょう。サンプルはGodocで表示されます。実行可能な例はテストファイルに属し、プロダクションのソースファイルには属しません。この例（[Godoc](https://pkg.go.dev/time#example-Duration)、[ソースコード](https://cs.opensource.google/go/go/+/HEAD:src/time/example_test.go)）をご覧ください。
+
+実行可能なサンプルを提供することが不可能な場合、サンプルコードをコードコメント内で提供することができます。コメント中の他のコードやコマンドラインのスニペットと同様に、標準的なフォーマット規則に従う必要があります。
