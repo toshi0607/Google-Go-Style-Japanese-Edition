@@ -12,6 +12,7 @@
     - [繰り返し](#繰り返し)
       - [パッケージ名とエクスポートされたシンボル名](#パッケージ名とエクスポートされたシンボル名)
       - [変数名と型](#変数名と型)
+      - [外部コンテキストとローカル名](#外部コンテキストとローカル名)
 
 # Goスタイル決定事項
 
@@ -220,4 +221,79 @@ limit, err := strconv.Atoi(limitStr)
 // Good:
 limitRaw := r.FormValue("limit")
 limit, err := strconv.Atoi(limitRaw)
+```
+
+#### 外部コンテキストとローカル名
+
+名前に周囲のコンテキストの情報を含めると、多くの場合、利点のない余計なノイズが発生します。パッケージ名、メソッド名、型名、関数名、インポートパス、そしてファイル名さえも、その中のすべての名前を自動的に修飾するコンテキストを提供することができます。
+
+```go
+// Bad:
+// In package "ads/targeting/revenue/reporting"
+type AdsTargetingRevenueReport struct{}
+
+func (p *Project) ProjectName() string
+```
+
+```go
+// Good:
+// In package "ads/targeting/revenue/reporting"
+type Report struct{}
+
+func (p *Project) Name() string
+```
+
+```go
+// Bad:
+// In package "sqldb"
+type DBConnection struct{}
+```
+
+```go
+// Good:
+// In package "sqldb"
+type Connection struct{}
+```
+
+```go
+// Bad:
+// In package "ads/targeting"
+func Process(in *pb.FooProto) *Report {
+    adsTargetingID := in.GetAdsTargetingID()
+}
+```
+
+```go
+// Good:
+// In package "ads/targeting"
+func Process(in *pb.FooProto) *Report {
+    id := in.GetAdsTargetingID()
+}
+```
+
+繰り返しは一般的に、単独で評価するのではなく、シンボルの使用者のコンテキストで評価されるべきです。たとえば、次のコードにはたくさんの名前があり、ある状況下では問題なくても、コンテキスト上では冗長になっています。
+
+```go
+// Bad:
+func (db *DB) UserCount() (userCount int, err error) {
+    var userCountInt64 int64
+    if dbLoadError := db.LoadFromDatabase("count(distinct users)", &userCountInt64); dbLoadError != nil {
+        return 0, fmt.Errorf("failed to load user count: %s", dbLoadError)
+    }
+    userCount = int(userCountInt64)
+    return userCount, nil
+}
+```
+
+その代わり、コンテキストや 使い方から明らかな名称については、情報を省略することができる場合が多いです。
+
+```go
+// Good:
+func (db *DB) UserCount() (int, error) {
+    var count int64
+    if err := db.Load("count(distinct users)", &count); err != nil {
+        return 0, fmt.Errorf("failed to load user count: %s", err)
+    }
+    return int(count), nil
+}
 ```
