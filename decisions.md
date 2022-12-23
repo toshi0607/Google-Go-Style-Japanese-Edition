@@ -19,6 +19,7 @@
     - [コメント文](#コメント文)
     - [例](#例)
     - [名前付き結果パラメータ](#名前付き結果パラメータ)
+    - [パッケージコメント](#パッケージコメント)
 
 # Goスタイル決定事項
 
@@ -464,3 +465,59 @@ func (n *Node) Parent2() (node *Node, err error)
 
 > ヒント: 関数のシグネチャでは、名前よりも型のほうがわかりやすいことがよくあります。[GoTip #38: 名前付き型としての関数](https://google.github.io/styleguide/go/index.html#gotip)でこれを実演しています。
 > 上記の`WithTimeout`では、実際のコードは結果パラメータのリストで生の`func()`の代わりに`CancelFunc`を使っており、ドキュメントを書くのにほとんど労力を必要としません。
+
+### パッケージコメント
+
+パッケージのコメントは、パッケージ句のすぐ上に表示され、コメントとパッケージ名の間に空白行がないようにしなければなりません。
+
+例:
+
+```go
+// Good:
+// Package math provides basic constants and mathematical functions.
+//
+// This package does not guarantee bit-identical results across architectures.
+package math
+```
+
+パッケージコメントは、1つのパッケージにつき1つでなければなりません。パッケージが複数のファイルで構成されている場合、そのうちの厳密に1つのファイルがパッケージコメントを持つべきです。
+
+`main`パッケージのコメントは少し形式が異なり、BUILDファイル内の`go_binary`ルールの名前がパッケージ名の代わりとなります。
+
+```go
+// Good:
+// The seed_generator command is a utility that generates a Finch seed file
+// from a set of JSON study configs.
+package main
+```
+
+バイナリ名が BUILD ファイルに書かれている通りであれば、他のスタイルのコメントでもかまいません。バイナリ名が最初の単語である場合、コマンドライン呼び出しのスペルと厳密に一致しなくても、大文字にすることが必要です。
+
+```go
+// Good:
+// Binary seed_generator ...
+// Command seed_generator ...
+// Program seed_generator ...
+// The seed_generator command ...
+// The seed_generator program ...
+// Seed_generator ...
+```
+
+ヒント:
+
+- コマンドラインの起動例やAPIの使い方は、有用なドキュメントになります。Godoc フォーマットのために、コードを含むコメント行をインデントしてください。
+- 明らかな主ファイルがない場合、またはパッケージのコメントが非常に長い場合、ドキュメントコメントをコメントとパッケージ節だけを含む`doc.go`という名前のファイルに入れることができます。
+- 複数の一行コメントの代わりに、複数行コメントを使用することができます。これは主に、コマンドラインのサンプル（バイナリ用）やテンプレートの例など、ソースファイルからコピー＆ペーストすると便利な部分がドキュメントに含まれている場合に便利です。
+
+```go
+// Good:
+/*
+The seed_generator command is a utility that generates a Finch seed file
+from a set of JSON study configs.
+
+    seed_generator *.json | base64 > finch-seed.base64
+*/
+package template
+```
+
+- メンテナ向けのコメントで、ファイル全体に適用されるものは、通常`import`宣言の後に置かれます。これらはGodocでは表示されず、パッケージコメントに関する上記の規則には従いません。
