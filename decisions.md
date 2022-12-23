@@ -16,6 +16,7 @@
   - [コメント](#コメント)
     - [コメント行の長さ](#コメント行の長さ)
     - [ドキュメントコメント](#ドキュメントコメント)
+    - [コメント文](#コメント文)
 
 # Goスタイル決定事項
 
@@ -349,7 +350,7 @@ func (db *DB) UserCount() (int, error) {
 
 ### ドキュメントコメント
 
-すべてのトップレベルのエクスポートされた名前にはドキュメントコメントが必要です。また、明らかに動作や意味が不明なエクスポートされていない型や関数の宣言にもコメントが必要です。これらのコメントは、説明されるオブジェクトの名前で始まる完全な文でなければなりません。より自然に読めるように、名前の前に冠詞（"a", "an", "the"）をつけてもかまいません。
+すべてのトップレベルのエクスポートされた名前にはドキュメントコメントが必要です。また、明らかに動作や意味が不明なエクスポートされていない型や関数の宣言にもコメントが必要です。これらのコメントは、説明されるオブジェクトの名前で始まる[完全な文](#コメント文)でなければなりません。より自然に読めるように、名前の前に冠詞（"a", "an", "the"）をつけてもかまいません。
 
 ```go
 // Good:
@@ -382,3 +383,28 @@ type Options struct {
 ```
 
 ベストプラクティス: エクスポートされていないコードに対するドキュメントコメントがある場合、エクスポートした場合と同じ習慣に従ってください（つまり、エクスポートされていない名前でコメントを開始する）。これにより、コメントとコードの両方において、エクスポートされていない名前を新しくエクスポートされた名前に置き換えるだけで、後で簡単にエクスポートすることができます。
+
+### コメント文
+
+完全な文章であるコメントは、標準的な英語の文章と同様に、大文字と小文字を区別してください。(例外として、識別子の名前が明確であれば、文頭に大文字でない名前をつけてもかまいません。このようなケースは、おそらく段落の最初にのみ行うのが最善でしょう)。
+
+文の断片であるコメントには、句読点や大文字の使用に関する要件はありません。
+
+ドキュメントのコメントは常に完全な文であるべきで、そのように常に大文字と句読点を使用すべきです。単純な行末コメント（特に構造体フィールドの場合）は、フィールド名を主語とする単純な語句でかまいません。
+
+```go
+// Good:
+// A Server handles serving quotes from the collected works of Shakespeare.
+type Server struct {
+    // BaseDir points to the base directory under which Shakespeare's works are stored.
+    //
+    // The directory structure is expected to be the following:
+    //   {BaseDir}/manifest.json
+    //   {BaseDir}/{name}/{name}-part{number}.txt
+    BaseDir string
+
+    WelcomeMessage  string // displayed when user logs in
+    ProtocolVersion string // checked against incoming requests
+    PageLength      int    // lines per page when printing (optional; default: 20)
+}
+```
