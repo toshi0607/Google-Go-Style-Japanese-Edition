@@ -11,6 +11,7 @@
       - [一文字の変数名](#一文字の変数名)
     - [繰り返し](#繰り返し)
       - [パッケージ名とエクスポートされたシンボル名](#パッケージ名とエクスポートされたシンボル名)
+      - [変数名と型](#変数名と型)
 
 # Goスタイル決定事項
 
@@ -196,3 +197,27 @@ Goのソースコードの一部では、不必要な繰り返しを避ける必
 | `db.LoadFromDatabase` | `db.Load` |
 | `goatteleportutil.CountGoatsTeleported` | `gtutil.CountGoatsTeleported`か `goatteleport.Count` |
 | `myteampb.MyTeamMethodRequest` | `mtpb.MyTeamMethodRequest`か `myteampb.MethodRequest` |
+
+#### 変数名と型
+
+コンパイラは常に変数の型を把握しており、またほとんどの場合、変数の使われ方によって読者にもその型がわかるようになっています。変数の型を明確にする必要があるのは、その値が同じスコープに2回現れる場合だけです。
+
+| 反復的な名前 | 良い名前 |
+| :---: | :---: |
+| `var numUsers int` | `var users int` |
+| `var nameString string` | `var name string` |
+| `var primaryProject *Project` | `var primary *Project` |
+
+値が複数の形式で現れる場合は、`raw`や`parsed`といった補足的な単語や、基本的な表現で明らかにすることができます。
+
+```go
+// Good:
+limitStr := r.FormValue("limit")
+limit, err := strconv.Atoi(limitStr)
+```
+
+```go
+// Good:
+limitRaw := r.FormValue("limit")
+limit, err := strconv.Atoi(limitRaw)
+```
