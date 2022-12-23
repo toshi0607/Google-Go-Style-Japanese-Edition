@@ -15,6 +15,7 @@
       - [外部コンテキストとローカル名](#外部コンテキストとローカル名)
   - [コメント](#コメント)
     - [コメント行の長さ](#コメント行の長さ)
+    - [ドキュメントコメント](#ドキュメントコメント)
 
 # Goスタイル決定事項
 
@@ -345,3 +346,39 @@ func (db *DB) UserCount() (int, error) {
 // 長いURLはあまり気にしないでください。
 // https://supercalifragilisticexpialidocious.example.com:8080/Animalia/Chordata/Mammalia/Rodentia/Geomyoidea/Geomyidae/
 ```
+
+### ドキュメントコメント
+
+すべてのトップレベルのエクスポートされた名前にはドキュメントコメントが必要です。また、明らかに動作や意味が不明なエクスポートされていない型や関数の宣言にもコメントが必要です。これらのコメントは、説明されるオブジェクトの名前で始まる完全な文でなければなりません。より自然に読めるように、名前の前に冠詞（"a", "an", "the"）をつけてもかまいません。
+
+```go
+// Good:
+// A Request represents a request to run a command.
+type Request struct { ...
+
+// Encode writes the JSON encoding of req to w.
+func Encode(w io.Writer, req *Request) { ...
+```
+
+ドキュメントコメントはGodocに表示され、IDEによって表示されるため、そのパッケージを使用する人のために書かれるべきです。
+
+ドキュメントコメントは、以下のシンボル、または、構造体の中に現れる場合はフィールドのグループに適用されます。
+
+```go
+// Good:
+// Options configure the group management service.
+type Options struct {
+    // General setup:
+    Name  string
+    Group *FooGroup
+
+    // Dependencies:
+    DB *sql.DB
+
+    // Customization:
+    LargeGroupThreshold int // optional; default: 10
+    MinimumMembers      int // optional; default: 2
+}
+```
+
+ベストプラクティス: エクスポートされていないコードに対するドキュメントコメントがある場合、エクスポートした場合と同じ習慣に従ってください（つまり、エクスポートされていない名前でコメントを開始する）。これにより、コメントとコードの両方において、エクスポートされていない名前を新しくエクスポートされた名前に置き換えるだけで、後で簡単にエクスポートすることができます。
