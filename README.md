@@ -16,15 +16,15 @@ Goスタイルガイドとそれに付随する文書は、読みやすく慣用
 | ドキュメント | リンク | 主な対象者 | 規範的 | 標準的 |
 | :---: | :---: | :---: | :---: | :---: |
 | スタイルガイド | [https://google.github.io/styleguide/go/guide](https://google.github.io/styleguide/go/guide) | 全員 | Yes | Yes |
-| スタイルの決定 | [https://google.github.io/styleguide/go/decisions](https://google.github.io/styleguide/go/decisions) | 可読性メンター | Yes | No |
+| スタイル決定事項 | [https://google.github.io/styleguide/go/decisions](https://google.github.io/styleguide/go/decisions) | 可読性メンター | Yes | No |
 | ベストプラクティス | [https://google.github.io/styleguide/go/best-practices](https://google.github.io/styleguide/go/best-practices) | 興味のある方 | No | No |
 
 ## ドキュメント
 
-1. [スタイルガイド](https://google.github.io/styleguide/go/guide)は、Google でのGoのスタイルの基礎を概説しています。この文書は決定的なものであり、スタイルの決定とベストプラクティスの推奨事項の基礎として使用されます。
-2. [スタイルの決定](https://google.github.io/styleguide/go/decisions)は、特定のスタイル ポイントに関する決定を要約し、必要に応じて決定の理由を説明する、より冗長な文書です。
+1. [スタイルガイド](https://google.github.io/styleguide/go/guide)は、Google でのGoのスタイルの基礎を概説しています。この文書は決定的なものであり、スタイル決定事項とベストプラクティスの推奨事項の基礎として使用されます。
+2. [スタイル決定事項](https://google.github.io/styleguide/go/decisions)は、特定のスタイル ポイントに関する決定事項を要約し、必要に応じて決定の理由を説明する、より冗長な文書です。
 
-これらの決定は、新しいデータ、新しい言語機能、新しいライブラリ、新しいパターンに基づいて変更されることがありますが、Googleの個々のGoプログラマがこのドキュメント即してプログラムを常に更新することは期待されていません。
+これらの決定事項は、新しいデータ、新しい言語機能、新しいライブラリ、新しいパターンに基づいて変更されることがありますが、Googleの個々のGoプログラマがこのドキュメント即してプログラムを常に更新することは期待されていません。
 
 3. [ベストプラクティス](https://google.github.io/styleguide/go/best-practices)は、一般的な問題を解決し、読みやすく、コードのメンテナンスの必要性に強い、時間をかけて進化してきたパターンのいくつかを文書化したものです。
 
@@ -35,7 +35,7 @@ Goスタイルガイドとそれに付随する文書は、読みやすく慣用
 - 代替スタイルを評価するための一連の原則に合意する
 - Goのスタイルに関する定型的な事柄をドキュメント化する
 - Goイディオムの標準的な例を文書化して提供する
-- 様々なスタイルの決定の長所と短所を文書化する
+- 様々なスタイルの決定事項の長所と短所を文書化する
 - Goの可読性レビューにおける驚きを最小限に抑える
 - 可読性メンターが一貫した用語とガイダンスを使用できるようにする
 
