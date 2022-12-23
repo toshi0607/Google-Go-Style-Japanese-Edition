@@ -18,6 +18,7 @@
     - [ドキュメントコメント](#ドキュメントコメント)
     - [コメント文](#コメント文)
     - [例](#例)
+    - [名前付き結果パラメータ](#名前付き結果パラメータ)
 
 # Goスタイル決定事項
 
@@ -415,3 +416,51 @@ type Server struct {
 パッケージは、その使用目的を明確にドキュメント化する必要があります。[実行可能な例](http://blog.golang.org/examples)を提供するようにしましょう。サンプルはGodocで表示されます。実行可能な例はテストファイルに属し、プロダクションのソースファイルには属しません。この例（[Godoc](https://pkg.go.dev/time#example-Duration)、[ソースコード](https://cs.opensource.google/go/go/+/HEAD:src/time/example_test.go)）をご覧ください。
 
 実行可能なサンプルを提供することが不可能な場合、サンプルコードをコードコメント内で提供することができます。コメント中の他のコードやコマンドラインのスニペットと同様に、標準的なフォーマット規則に従う必要があります。
+
+### 名前付き結果パラメータ
+
+パラメータに名前をつけるときは、Godocで関数のシグネチャがどのように表示されるかを考慮してください。関数自体の名前と結果のパラメータの型は、しばしば十分に明確です。
+
+```go
+// Good:
+func (n *Node) Parent1() *Node
+func (n *Node) Parent2() (*Node, error)
+```
+
+関数が同じ型の2つ以上のパラメータを返す場合、名前を追加すると便利です。
+
+```go
+// Good:
+func (n *Node) Children() (left, right *Node, err error)
+```
+
+呼び出し側が特定の結果パラメータに対してアクションを起こさなければならない場合、その名前を付けることでアクションの内容を示唆することができます。
+
+```go
+// Good:
+// WithTimeout returns a context that will be canceled no later than d duration
+// from now.
+//
+// The caller must arrange for the returned cancel function to be called when
+// the context is no longer needed to prevent a resource leak.
+func WithTimeout(parent Context, d time.Duration) (ctx Context, cancel func())
+```
+
+上のコードでは、キャンセルは呼び出し側が取らなければならない特定のアクションです。しかし、結果パラメータに`(Context, func())`とだけ書かれていたのでは、「キャンセル関数」が何を意味するのかが不明です。
+
+名前付きの結果パラメータは、その名前が[不必要な繰り返し](#変数名と型)を生む場合は使用しないでください。
+
+```go
+// Bad:
+func (n *Node) Parent1() (node *Node)
+func (n *Node) Parent2() (node *Node, err error)
+```
+
+関数内部で変数を宣言するのを避けるために、結果パラメータに名前をつけないようにしましょう。この方法は、実装を簡潔にする代わりに API を不必要に冗長にしてしまいます。
+
+[素のまま返すこと](https://tour.golang.org/basics/7)が許されるのは、小規模な関数の場合だけです。中規模な関数になったら、戻り値を明示するようにしましょう。同様に、素の返り値を使えるようになるからといって、結果パラメータに名前をつけないようにしましょう。関数の数行を節約することよりも、常に[明確さ](guide.md#明確さ)が重要なのです。
+
+遅延クロージャの中で値を変更しなければならない場合、結果パラメータに名前を付けることは常に許容されます。
+
+> ヒント: 関数のシグネチャでは、名前よりも型のほうがわかりやすいことがよくあります。[GoTip #38: 名前付き型としての関数](https://google.github.io/styleguide/go/index.html#gotip)でこれを実演しています。
+> 上記の`WithTimeout`では、実際のコードは結果パラメータのリストで生の`func()`の代わりに`CancelFunc`を使っており、ドキュメントを書くのにほとんど労力を必要としません。
