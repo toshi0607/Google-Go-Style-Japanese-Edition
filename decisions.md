@@ -3,6 +3,7 @@
   - [命名](#命名)
     - [アンダースコア](#アンダースコア)
     - [パッケージ名](#パッケージ名)
+    - [レシーバ名](#レシーバ名)
 
 # Goスタイル決定事項
 
@@ -54,3 +55,18 @@ Goのパッケージ名にはアンダースコアは使わないでください
 インポートされたパッケージの名前が変更された場合 (例: `import foopb "path/to/foo_go_proto"`) 、パッケージのローカル名は上記のルールに従わなければなりません。特定のインポートが複数のファイル、特に同じパッケージや近くのパッケージで改名された場合、一貫性を保つために可能な限り同じローカル名を使用する必要があります。
 
 こちらも参照してください: [パッケージ名に関するGoブログ記事](https://go.dev/blog/package-names)
+
+### レシーバ名
+
+[レシーバ](https://golang.org/ref/spec#Method_declarations)変数名は、以下の通りでなければなりません。
+
+- 短い（通常1文字か2文字の長さ）
+- 型自体の略称
+- その型に対するすべてのレシーバで一貫
+
+| 長い名前 | より良い名前 |
+| :---: | :---: |
+| `func (tray Tray)` | `func (t Tray)` |
+| `func (info *ResearchInfo)` | `func (ri *ResearchInfo)` |
+| `func (this *ReportWriter)` | `func (w *ReportWriter)` |
+| `func (self *Scanner)` | `func (s *Scanner)` |
