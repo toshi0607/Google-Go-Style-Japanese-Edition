@@ -10,6 +10,7 @@
     - [変数名](#変数名)
       - [一文字の変数名](#一文字の変数名)
     - [繰り返し](#繰り返し)
+      - [パッケージ名とエクスポートされたシンボル名](#パッケージ名とエクスポートされたシンボル名)
 
 # Goスタイル決定事項
 
@@ -183,3 +184,15 @@ const (
 Goのソースコードの一部では、不必要な繰り返しを避ける必要があります。よくあるのが名前の繰り返しで、不要な単語が含まれていたり、文脈や型が繰り返されることがよくあります。コード自体も、同じまたは似たようなコードセグメントが近接して何度も現れると、不必要に繰り返されることがあります。
 
 反復的な命名には、次のようなさまざまな形態があります。
+
+#### パッケージ名とエクスポートされたシンボル名
+
+エクスポートされたシンボルに名前を付ける場合、パッケージの名前は常にパッケージの外から見えるので、両者の間の冗長な情報は減らすか排除する必要があります。パッケージが1つの型だけをエクスポートし、それがパッケージ自身の名前になる場合、コンストラクタの正規名が必要であれば`New`になります。
+
+| 反復的な名前 | 良い名前 |
+| :---: | :---: |
+| `widget.NewWidget` | `widget.New` |
+| `widget.NewWidgetWithName` | `widget.NewWithName` |
+| `db.LoadFromDatabase` | `db.Load` |
+| `goatteleportutil.CountGoatsTeleported` | `gtutil.CountGoatsTeleported`か `goatteleport.Count` |
+| `myteampb.MyTeamMethodRequest` | `mtpb.MyTeamMethodRequest`か `myteampb.MethodRequest` |
