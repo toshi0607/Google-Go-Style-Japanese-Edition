@@ -22,6 +22,7 @@
     - [パッケージコメント](#パッケージコメント)
   - [インポート](#インポート)
     - [インポート名変更](#インポート名変更)
+    - [インポートグループ分け](#インポートグループ分け)
 
 # Goスタイル決定事項
 
@@ -552,3 +553,57 @@ import (
 ```
 
 もし、使用したい共通のローカル変数名（例: `url`、`ssh`）と名前が衝突するパッケージをインポートする必要があり、パッケージ名を変更したい場合、望ましい方法は`pkg`サフィックス（例: `urlpkg`）を使用することです。ローカル変数でパッケージをシャドーイングすることも可能です。 この名前の変更は、そのような変数がスコープ内にあるときにパッケージを使用する必要がある場合にのみ必要であることに注意してください。
+
+### インポートグループ分け
+
+インポートは、2つのグループに分けて整理する必要があります。
+
+- 標準ライブラリパッケージ
+- その他（プロジェクトやベンダー）のパッケージ
+
+```go
+// Good:
+package main
+
+import (
+    "fmt"
+    "hash/adler32"
+    "os"
+
+    "github.com/dsnet/compress/flate"
+    "golang.org/x/text/encoding"
+    "google.golang.org/protobuf/proto"
+    foopb "myproj/foo/proto/proto"
+    _ "myproj/rpc/protocols/dial"
+    _ "myproj/security/auth/authhooks"
+)
+```
+
+プロジェクトパッケージを複数のグループに分割することも可能です。たとえば、名前を変更したインポート、副作用のためだけのインポート、その他の特別なインポートグループを別のグループにしたい場合などです。
+
+```go
+// Good:
+package main
+
+import (
+    "fmt"
+    "hash/adler32"
+    "os"
+
+
+    "github.com/dsnet/compress/flate"
+    "golang.org/x/text/encoding"
+    "google.golang.org/protobuf/proto"
+
+    foopb "myproj/foo/proto/proto"
+
+    _ "myproj/rpc/protocols/dial"
+    _ "myproj/security/auth/authhooks"
+)
+```
+
+*注意*: 選択的なグループの維持、つまり標準ライブラリとGoogleインポートの必須分離のために必要な以上の分割は、[goimports](https://google.github.io/styleguide/go/golang.org/x/tools/cmd/goimports)ツールではサポートされていません。追加のインポートサブグループは、適合した状態で維持するために、記述者とレビュアーの両方の側で注意が必要です。
+
+AppEngineアプリでもあるGoogleプログラムは、AppEngineインポート用の別グループを持つべきです。
+
+Gofmtは、各グループをインポートパスでソートするように配慮しています。しかし、インポートを自動的にグループに分けてくれるわけではありません。人気のある[goimports](https://google.github.io/styleguide/go/golang.org/x/tools/cmd/goimports)ツールは、Gofmtとインポート管理を組み合わせ、上記の決定に基づいてインポートをグループに分離します。[goimports](https://google.github.io/styleguide/go/golang.org/x/tools/cmd/goimports)にインポートの配置を完全に管理させることも可能ですが、ファイルが改訂された場合、そのインポートリストは内部的に一貫性を保たなければなりません。
