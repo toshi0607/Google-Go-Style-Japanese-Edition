@@ -4,6 +4,7 @@
     - [アンダースコア](#アンダースコア)
     - [パッケージ名](#パッケージ名)
     - [レシーバ名](#レシーバ名)
+    - [定数名](#定数名)
 
 # Goスタイル決定事項
 
@@ -70,3 +71,39 @@ Goのパッケージ名にはアンダースコアは使わないでください
 | `func (info *ResearchInfo)` | `func (ri *ResearchInfo)` |
 | `func (this *ReportWriter)` | `func (w *ReportWriter)` |
 | `func (self *Scanner)` | `func (s *Scanner)` |
+
+### 定数名
+
+定数名は、Goの他の名前と同様に[ミックスキャップ](./guide.md#ミックスキャップ)を使用しなければなりません。（エクスポートされた定数は大文字で始まり、エクスポートされていない定数は小文字で始まります。）これは、他の言語での慣習を破っている場合でも適用されます。定数名はその値の派生物であってはならず、代わりにその値が示すものを説明しなければなりません。
+
+```go
+// Good:
+const MaxPacketSize = 512
+
+const (
+    ExecuteBit = 1 << iota
+    WriteBit
+    ReadBit
+)
+```
+
+ミックスキャップでない定数名や、`k`のプレフィックスを持つ定数は使用しないでください。
+
+```go
+// Bad:
+const MAX_PACKET_SIZE = 512
+const kMaxBufferSize = 1024
+const KMaxUsersPergroup = 500
+```
+
+定数には、値ではなく役割に基づいて名前を付けます。もし定数がその値とは別に役割を持たないのであれば、定数として定義する必要はありません。
+
+```go
+// Bad:
+const Twelve = 12
+
+const (
+    UserNameColumn = "username"
+    GroupColumn    = "group"
+)
+```
