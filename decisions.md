@@ -27,6 +27,7 @@
     - [「ドット」のインポート（`import .`）](#ドットのインポートimport-)
   - [エラー](#エラー)
     - [エラーを返す](#エラーを返す)
+    - [エラー文字列](#エラー文字列)
 
 # Goスタイル決定事項
 
@@ -689,3 +690,26 @@ func Bad() *os.PathError { /*...*/ }
 ```
 
 **ヒント**: `context.Context`引数を取る関数は、通常`error`を返すようにしてください。そうすれば、関数の実行中にコンテキストがキャンセルされたかどうかを呼び出し元が判断できます。
+
+### エラー文字列
+
+エラー文字列は（エクスポート名、固有名詞、頭字語で始まる場合を除き）大文字始まりにすべきではなく、句読点で終わらせてはいけません。これは、エラー文字列は通常、ユーザーに表示される前に他のコンテキストで表示されるからです。
+
+```go
+// Bad:
+err := fmt.Errorf("Something bad happened.")
+```
+
+```go
+// Good:
+err := fmt.Errorf("something bad happened")
+```
+
+一方、完全に表示されるメッセージ（ロギング、テスト失敗、APIレスポンス、その他のUI）のスタイルは場合によりますが、通常大文字始まりで表記されるべきです。
+
+```go
+// Good:
+log.Infof("Operation aborted: %v", err)
+log.Errorf("Operation aborted: %v", err)
+t.Errorf("Op(%q) failed unexpectedly; err=%v", args, err)
+```
