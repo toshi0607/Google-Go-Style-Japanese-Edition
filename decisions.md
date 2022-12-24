@@ -28,6 +28,7 @@
   - [エラー](#エラー)
     - [エラーを返す](#エラーを返す)
     - [エラー文字列](#エラー文字列)
+    - [エラー処理](#エラー処理)
 
 # Goスタイル決定事項
 
@@ -713,3 +714,25 @@ log.Infof("Operation aborted: %v", err)
 log.Errorf("Operation aborted: %v", err)
 t.Errorf("Op(%q) failed unexpectedly; err=%v", args, err)
 ```
+
+### エラー処理
+
+エラーに遭遇したコードは、それをどのように処理するかを意図的に選択する必要があります。通常、`_`変数を使用してエラーを破棄することは適切ではありません。関数がエラーを返した場合は、次のいずれかを行ってください。
+
+- エラーを直ちに処理して対処する。
+- エラーを呼び出し元に返す。
+
+例外的な状況では、`log.Fatal`を呼び出すか、（絶対に必要であれば）`panic`させます。
+
+**注意**: `log.Fatal`は、標準ライブラリのログではありません。[#logging]を参照してください。
+
+エラーを無視または破棄することが適切な稀な状況（例たとば、絶対に失敗しないと文書化されている [(*bytes.Buffer).Write](https://pkg.go.dev/bytes#Buffer.Write)の呼び出し）では、付帯するコメントでそれが安全である理由を説明する必要があります。
+
+```go
+// Good:
+var b *bytes.Buffer
+
+n, _ := b.Write(p) // 絶対nilでないエラーを返さない
+```
+
+エラー処理の詳細な議論と例については、[Effective Go](http://golang.org/doc/effective_go.html#errors)と[ベストプラクティス](#TBD)を参照してください。
