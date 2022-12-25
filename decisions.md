@@ -35,6 +35,7 @@
     - [リテラルフォーマット](#リテラルフォーマット)
       - [フィールド名](#フィールド名)
       - [中括弧のマッチング](#中括弧のマッチング)
+    - [抱き合わせ中括弧](#抱き合わせ中括弧)
 
 # Goスタイル決定事項
 
@@ -918,4 +919,58 @@ bad := []*Type{
     {
         Key: "value"},
 }
+```
+
+### 抱き合わせ中括弧
+
+スライスや配列のリテラルで中括弧の間の空白を削除する（別名「抱き合わせ」）ことは、以下の両方が真である場合にのみ許可されます。
+
+- [インデントが一致する](https://google.github.io/styleguide/go/decisions#literal-matching-braces)
+- 内部の値もリテラルまたはprotoビルダーである（つまり、変数や他の式ではない）
+
+```go
+// Good:
+good := []*Type{
+    { // 抱き合わせされていない
+        Field: "value",
+    },
+    {
+        Field: "value",
+    },
+}
+```
+
+```go
+// Good:
+good := []*Type{{ // 正しく抱き合わせされている
+    Field: "value",
+}, {
+    Field: "value",
+}}
+```
+
+```go
+// Good:
+good := []*Type{
+    first, // 抱き合わせできない
+    {Field: "second"},
+}
+```
+
+```go
+// Good:
+okay := []*pb.Type{pb.Type_builder{
+    Field: "first", // protoビルダーは垂直方向のスペースを節約するために抱き合わせされている
+}.Build(), pb.Type_builder{
+    Field: "second",
+}.Build()}
+```
+
+```go
+// Bad:
+bad := []*Type{
+    first,
+    {
+        Field: "second",
+    }}
 ```
