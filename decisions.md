@@ -31,6 +31,8 @@
     - [エラー処理](#エラー処理)
     - [インバンドエラー](#インバンドエラー)
     - [エラーフローのインデント](#エラーフローのインデント)
+  - [言語](#言語)
+    - [リテラルフォーマット](#リテラルフォーマット)
 
 # Goスタイル決定事項
 
@@ -828,3 +830,9 @@ if x, err := f(); err != nil {
 ```
 
 詳しくは、[Go Tip #1: Line of Sight](https://google.github.io/styleguide/go/index.html#gotip)と[TotT: Reduce Code Complexity by Reducing Nesting](https://testing.googleblog.com/2017/06/code-health-reduce-nesting-reduce.html)を参照してください。
+
+## 言語
+
+### リテラルフォーマット
+
+Goには非常に強力な複合リテラル構文があり、深くネストした複雑な値を1つの式で表現することができます。可能な限り、フィールドごとに値を構築するのではなく、このリテラル構文を使用する必要があります。リテラルの`gofmt`フォーマットは一般的に非常に優れていますが、これらのリテラルを読みやすく維持するための追加ルールがいくつかあります。
