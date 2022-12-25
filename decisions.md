@@ -29,6 +29,7 @@
     - [エラーを返す](#エラーを返す)
     - [エラー文字列](#エラー文字列)
     - [エラー処理](#エラー処理)
+    - [インバンドエラー](#インバンドエラー)
 
 # Goスタイル決定事項
 
@@ -722,7 +723,7 @@ t.Errorf("Op(%q) failed unexpectedly; err=%v", args, err)
 - エラーを直ちに処理して対処する。
 - エラーを呼び出し元に返す。
 
-例外的な状況では、`log.Fatal`を呼び出すか、（絶対に必要であれば）`panic`させます。
+例外的な状況では、[log.Fatal](https://pkg.go.dev/github.com/golang/glog#Fatal)を呼び出すか、（絶対に必要であれば）`panic`させます。
 
 **注意**: `log.Fatal`は、標準ライブラリのログではありません。[#logging]を参照してください。
 
@@ -736,3 +737,45 @@ n, _ := b.Write(p) // 絶対nilでないエラーを返さない
 ```
 
 エラー処理の詳細な議論と例については、[Effective Go](http://golang.org/doc/effective_go.html#errors)と[ベストプラクティス](#TBD)を参照してください。
+
+### インバンドエラー
+
+C言語や類似の言語では、関数がエラーや結果の欠落を知らせるために、-1、null、空文字列などの値を返すことがよくあります。これはインバンドエラー処理として知られています。
+
+```go
+// Bad:
+// Lookup returns the value for key or -1 if there is no mapping for key.
+func Lookup(key string) int
+```
+
+インバンドエラー値のチェックを怠ると、バグが発生したり、間違った関数にエラーを帰属させたりする可能性があります。
+
+```go
+// Bad:
+// 次の行は、入力値に対して Parse が失敗したというエラーを返しますが、
+// 失敗の原因は missingKey に対するマッピングが存在しないことでした。
+return Parse(Lookup(missingKey))
+```
+
+Goの複数戻り値のサポートはより良い解決策を提供します（[複数戻り値に関するEffective Goのセクション](http://golang.org/doc/effective_go.html#multiple-returns)を参照してください）。クライアントにインバンドエラー値をチェックさせる代わりに、関数は他の戻り値が有効であるかどうかを示すために追加の値を返すべきです。この戻り値は、エラーであっても、説明が不要な場合はブール値であってもよく、最終的な戻り値であるべきです。
+
+```go
+// Good:
+// Lookup returns the value for key or ok=false if there is no mapping for key.
+func Lookup(key string) (value string, ok bool)
+```
+
+`Lookup(key)`は2つの出力を持つので、コンパイルエラーを起こすことで呼び出し側が誤って`Parse(Lookup(key))`と記述するのを防ぐAPIになっています。
+
+このようにエラーを返すことで、より強固で明示的なエラー処理を行うことができます。
+
+```go
+// Good:
+value, ok := Lookup(key)
+if !ok {
+    return fmt.Errorf("no value for %q", key)
+}
+return Parse(value)
+```
+
+`strings`パッケージのような標準ライブラリ関数には、インバンドエラー値を返すものがあります。これは文字列操作のコードを非常に単純化しますが、その代償としてプログラマはより多くの注意を払わなければなりません。一般的に、Google のコードベースにおけるGoのコードは、 エラーに対して追加の値を返すべきです。
