@@ -39,6 +39,7 @@
       - [型名の繰り返し](#型名の繰り返し)
       - [ゼロ値フィールド](#ゼロ値フィールド)
       - [簡潔さ](#簡潔さ)
+      - [明示](#明示)
 
 # Goスタイル決定事項
 
@@ -1083,6 +1084,34 @@ tests := []struct {
     {
         input:   "hostname",
         wantErr: ErrBadHostname,
+    },
+}
+```
+
+#### 明示
+
+```go
+tests := []struct {
+    input    string
+    wantIPv4 bool
+    wantIPv6 bool
+    wantErr  bool
+}{
+    {
+        input:    "1.2.3.4",
+        wantIPv4: true,
+        wantIPv6: false,
+    },
+    {
+        input:    "1:2::3:4",
+        wantIPv4: false,
+        wantIPv6: true,
+    },
+    {
+        input:    "hostname",
+        wantIPv4: false,
+        wantIPv6: false,
+        wantErr:  true,
     },
 }
 ```
