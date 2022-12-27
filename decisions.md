@@ -40,6 +40,7 @@
       - [ゼロ値フィールド](#ゼロ値フィールド)
       - [簡潔さ](#簡潔さ)
       - [明示](#明示)
+    - [Nilスライス](#nilスライス)
 
 # Goスタイル決定事項
 
@@ -1115,3 +1116,87 @@ tests := []struct {
     },
 }
 ```
+
+### Nilスライス
+
+ほとんどの場合、`nil`と空のスライスの間に機能的な違いはありません。`len`や`cap`のような組み込み関数は、`nil`スライスで期待通りに動作します。
+
+```go
+// Good:
+import "fmt"
+
+var s []int         // nil
+
+fmt.Println(s)      // []
+fmt.Println(len(s)) // 0
+fmt.Println(cap(s)) // 0
+for range s {...}   // no-op
+
+s = append(s, 42)
+fmt.Println(s)      // [42]
+```
+
+空のスライスをローカル変数として宣言する場合（特に戻り値の元になり得る場合）、呼び出し側によるバグのリスクを減らすために`nil`の初期化を優先してください。
+
+```go
+// Good:
+var t []string
+```
+
+```go
+// Bad:
+t := []string{}
+```
+
+`nil`と空のスライスを区別することをクライアントに強いるようなAPIを作ってはいけません。
+
+```go
+// Good:
+// Ping pings its targets.
+// Returns hosts that successfully responded.
+func Ping(hosts []string) ([]string, error) { ... }
+```
+
+```go
+// Bad:
+// Ping pings its targets and returns a list of hosts
+// that successfully responded. Can be empty if the input was empty.
+// nil signifies that a system error occurred.
+func Ping(hosts []string) []string { ... }
+```
+
+インターフェースを設計するとき、`nil`のスライスと`nil`でない長さ0のスライスを区別することは、微妙なプログラミングエラーにつながる可能性があるので避けてください。これは通常、`== nil`ではなく`len`を使用して空かどうかをチェックすることで達成されます。
+
+この実装では、`nil`と長さ0のスライスの両方を「空」として受け入れます。
+
+```go
+// Good:
+// describeInts describes s with the given prefix, unless s is empty.
+func describeInts(prefix string, s []int) {
+    if len(s) == 0 {
+        return
+    }
+    fmt.Println(prefix, s)
+}
+```
+
+APIの一部としてnilスライスと長さ0のスライスの区別に依存しないでください
+
+```go
+// Bad:
+func maybeInts() []int { /* ... */ }
+
+// describeInts describes s with the given prefix; pass nil to skip completely.
+func describeInts(prefix string, s []int) {
+  // この関数の動作は、maybeInts()が「空」の場合に
+  // 何を返すか（nil または []int{} ）によって意図せず変化します。
+  if s == nil {
+    return
+  }
+  fmt.Println(prefix, s)
+}
+
+describeInts("Here are some ints:", maybeInts())
+```
+
+詳しくは[インバンドエラー](#インバンドエラー)をご覧ください。
