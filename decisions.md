@@ -42,6 +42,7 @@
       - [明示](#明示)
     - [Nilスライス](#nilスライス)
     - [インデントの乱れ](#インデントの乱れ)
+    - [関数のフォーマット](#関数のフォーマット)
 
 # Goスタイル決定事項
 
@@ -1220,3 +1221,135 @@ if longCondition1 && longCondition2 &&
 - [関数のフォーマット](#関数のフォーマット)
 - [条件とループ](#条件とループ)
 - [リテラルのフォーマット](#リテラルのフォーマット)
+
+### 関数のフォーマット
+
+関数やメソッドの宣言のシグネチャは、[インデントの乱れ](#インデントの乱れ)を避けるために1行にまとめるべきです。
+
+関数の引数リストは、Go ソースファイルの中で最も長い行になることがあります。しかし、それらはインデントの変更より前にあるため、それ以降の行を関数本体の一部のように見せて混乱させない方法で改行するのは困難です。
+
+```go
+// Bad:
+func (r *SomeType) SomeLongFunctionName(foo1, foo2, foo3 string,
+    foo4, foo5, foo6 int) {
+    foo7 := bar(foo1)
+    // ...
+}
+```
+
+多くの引数を持つ関数の呼び出し部分を短縮するためのいくつかのオプションについては、[ベストプラクティス](#TBD)を参照してください。
+
+```go
+// Good:
+good := foo.Call(long, CallOptions{
+    Names:   list,
+    Of:      of,
+    The:     parameters,
+    Func:    all,
+    Args:    on,
+    Now:     separate,
+    Visible: lines,
+})
+```
+
+```go
+// Bad:
+bad := foo.Call(
+    long,
+    list,
+    of,
+    parameters,
+    all,
+    on,
+    separate,
+    lines,
+)
+```
+
+ローカル変数を括り出すことで、行を短くすることができる場合が多いです。
+
+```go
+// Good:
+local := helper(some, parameters, here)
+good := foo.Call(list, of, parameters, local)
+```
+
+同様に、関数とメソッドの呼び出しも、行の長さだけに基づいて分離してはいけません。
+
+```go
+// Good:
+good := foo.Call(long, list, of, parameters, all, on, one, line)
+```
+
+```go
+// Bad:
+bad := foo.Call(long, list, of, parameters,
+    with, arbitrary, line, breaks)
+```
+
+特定の関数のパラメータにコメントをつけないでください。代わりに、オプション構造体を使用するか、関数のドキュメントに詳細を追加してください。
+
+```go
+// Good:
+good := server.New(ctx, server.Options{Port: 42})
+```
+
+```go
+// Bad:
+bad := server.New(
+    ctx,
+    42, // Port
+)
+```
+
+呼び出し元が長すぎる場合は、リファクタリングを検討してください。
+
+```go
+// Good:
+// 可変長引数は括り出せる場合がある
+replacements := []string{
+    "from", "to", // 関連する値を互いに隣接してフォーマットすることができる
+    "source", "dest",
+    "original", "new",
+}
+
+// NewReplacer の入力として、代替構造体を使用する。
+replacer := strings.NewReplacer(replacements...)
+```
+
+APIを変更できない場合、またはローカル呼び出しが異常な場合（呼び出しが長すぎるかどうかは別として）、呼び出しの理解を助けるのであれば、改行を追加することは常に許容されます。
+
+```go
+// Good:
+canvas.RenderCube(cube,
+    x0, y0, z0,
+    x0, y0, z1,
+    x0, y1, z0,
+    x0, y1, z1,
+    x1, y0, z0,
+    x1, y0, z1,
+    x1, y1, z0,
+    x1, y1, z1,
+)
+```
+
+上の例の行は、特定の列の境界で折り返されているのではなく、座標の三点セットに基づ いてグループ化されていることに注意してください。
+
+上の例の行は、特定の列の境界で折り返されているのではなく、座標の三点セットに基づ いてグループ化されていることに注意してください。
+
+関数内の長い文字列リテラルは、行の長さのために改行されるべきではありません。そのような文字列を含む関数では、文字列の書式の後に改行を追加し、引数は次行以降に渡すようにすればよいのです。改行位置の決定は、純粋に行の長さではなく、入力の意味的なグループ分けに基づいて行うのが最もよい方法です。
+
+```go
+// Good:
+log.Warningf("Database key (%q, %d, %q) incompatible in transaction started by (%q, %d, %q)",
+    currentCustomer, currentOffset, currentKey,
+    txCustomer, txOffset, txKey)
+```
+
+```go
+// Bad:
+log.Warningf("Database key (%q, %d, %q) incompatible in"+
+    " transaction started by (%q, %d, %q)",
+    currentCustomer, currentOffset, currentKey, txCustomer,
+    txOffset, txKey)
+```
