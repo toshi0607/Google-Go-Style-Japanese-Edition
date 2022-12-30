@@ -43,6 +43,7 @@
     - [Nilスライス](#nilスライス)
     - [インデントの乱れ](#インデントの乱れ)
     - [関数のフォーマット](#関数のフォーマット)
+    - [条件とループ](#条件とループ)
 
 # Goスタイル決定事項
 
@@ -1352,4 +1353,135 @@ log.Warningf("Database key (%q, %d, %q) incompatible in"+
     " transaction started by (%q, %d, %q)",
     currentCustomer, currentOffset, currentKey, txCustomer,
     txOffset, txKey)
+```
+
+### 条件とループ
+
+if文は改行してはいけません。複数行のif文は[インデントを乱す](#インデントの乱れ)可能性があります。
+
+```go
+// Bad:
+// 2番目のif文はifブロック内のコードと揃っているため、
+// インデントを混乱させる原因となっています。
+if db.CurrentStatusIs(db.InTransaction) &&
+    db.ValuesEqual(db.TransactionKey(), row.Key()) {
+    return db.Errorf(db.TransactionError, "query failed: row (%v): key does not match transaction key", row)
+}
+```
+
+短絡動作が必要ない場合は、ブール演算を直接抽出できます。
+
+```go
+// Good:
+inTransaction := db.CurrentStatusIs(db.InTransaction)
+keysMatch := db.ValuesEqual(db.TransactionKey(), row.Key())
+if inTransaction && keysMatch {
+    return db.Error(db.TransactionError, "query failed: row (%v): key does not match transaction key", row)
+}
+```
+
+また、特にすでに繰り返されている条件の場合、他に抽出できる部分がある可能性があります。
+
+```go
+// Good:
+uid := user.GetUniqueUserID()
+if db.UserIsAdmin(uid) || db.UserHasPermission(uid, perms.ViewServerConfig) || db.UserHasPermission(uid, perms.CreateGroup) {
+    // ...
+}
+```
+
+```go
+// Bad:
+if db.UserIsAdmin(user.GetUniqueUserID()) || db.UserHasPermission(user.GetUniqueUserID(), perms.ViewServerConfig) || db.UserHasPermission(user.GetUniqueUserID(), perms.CreateGroup) {
+    // ...
+}
+```
+
+クロージャや複数行の構造体リテラルを含む`if`文は、[インデントの乱れ](#インデントの乱れ)を避けるため、[中括弧を一致](#中括弧のマッチング)させる必要があります。
+
+```go
+// Good:
+if err := db.RunInTransaction(func(tx *db.TX) error {
+    return tx.Execute(userUpdate, x, y, z)
+}); err != nil {
+    return fmt.Errorf("user update failed: %s", err)
+}
+```
+
+```go
+// Good:
+if _, err := client.Update(ctx, &upb.UserUpdateRequest{
+    ID:   userID,
+    User: user,
+}); err != nil {
+    return fmt.Errorf("user update failed: %s", err)
+}
+```
+
+同様に、for文に無理やり改行を挿入するのもやめてください。もしリファクタリングする良い方法がなければ、いつでも行を単に長くしておくことができます。
+
+```go
+// Good:
+for i, max := 0, collection.Size(); i < max && !collection.HasPendingWriters(); i++ {
+    // ...
+}
+```
+
+しかし、よくあります。
+
+```go
+// Good:
+for i, max := 0, collection.Size(); i < max; i++ {
+    if collection.HasPendingWriters() {
+        break
+    }
+    // ...
+}
+```
+
+`switch`文と`case`文も1行にまとめてください。
+
+```go
+// Good:
+switch good := db.TransactionStatus(); good {
+case db.TransactionStarting, db.TransactionActive, db.TransactionWaiting:
+    // ...
+case db.TransactionCommitted, db.NoTransaction:
+    // ...
+default:
+    // ...
+}
+```
+
+```go
+// Bad:
+switch bad := db.TransactionStatus(); bad {
+case db.TransactionStarting,
+    db.TransactionActive,
+    db.TransactionWaiting:
+    // ...
+case db.TransactionCommitted,
+    db.NoTransaction:
+    // ...
+default:
+    // ...
+}
+```
+
+変数と定数を比較する条件文では、等号演算子の左側に変数値を配置します。
+
+```go
+// Good:
+if result == "foo" {
+  // ...
+}
+```
+
+定数が先に来るようなわかりにくい表現（「[ヨーダ記法](https://ja.wikipedia.org/wiki/%E3%83%A8%E3%83%BC%E3%83%80%E8%A8%98%E6%B3%95)」）は避けます。
+
+```go
+// Bad:
+if "foo" == result {
+  // ...
+}
 ```
