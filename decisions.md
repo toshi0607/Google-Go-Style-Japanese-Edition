@@ -46,6 +46,7 @@
     - [条件とループ](#条件とループ)
     - [コピー](#コピー)
     - [panicさせるな](#panicさせるな)
+    - [Must関数](#must関数)
 
 # Goスタイル決定事項
 
@@ -1548,3 +1549,70 @@ func Consumer(r Record) {...} // r.bufのコピーをつくります
 「不可能」な状態を示すエラー、つまり、コードレビューやテスト中に常に発見されるべきバグについては、関数は合理的にエラーを返すか、`log.Fatal`を呼び出すことができます。
 
 注意：`log.Fatal`は、標準ライブラリのログではありません。[logging](#TBD)を参照してください。
+
+### Must関数
+
+失敗時にプログラムを停止させるセットアップヘルパー関数は、`MustXYZ`（または`mustXYZ`）という命名規則に従っています。一般に、これらの関数はプログラム起動の初期にのみ呼ばれるべきで、ユーザー入力のように通常のGoエラー処理が優先されるような場合には呼ばないでください。
+
+これは[パッケージ初期化時](https://golang.org/ref/spec#Package_initialization)にパッケージレベルの変数を初期化するために呼ばれる関数によく出てきます（例：[template.Must](https://golang.org/pkg/text/template/#Must)や[regexp.MustCompile](https://golang.org/pkg/regexp/#MustCompile)）。
+
+```go
+// Good:
+func MustParse(version string) *Version {
+    v, err := Parse(version)
+    if err != nil {
+        log.Fatalf("MustParse(%q) = _, %v", version, err)
+    }
+    return v
+}
+
+// パッケージレベルの「定数」。もし、 `Parse` を使用したいのであれば、 
+// `init` で値を設定する必要があったでしょう。
+var DefaultVersion = MustParse("1.2.3")
+```
+
+注意：`log.Fatal`は、標準ライブラリのログではありません。[logging](#TBD)を参照してください。
+
+現在のテストを停止させるだけのテストヘルパー（`t.Fatal`を使用します）でも、同じ規約を使用することができます。このようなヘルパーは、たとえば[テーブル駆動型テスト](https://google.github.io/styleguide/go/decisions#table-driven-tests)の構造体のフィールドにテスト値を作成する際に便利です。というのもエラーを返す関数は構造体フィールドに直接代入できないためです。
+
+```go
+// Good:
+func mustMarshalAny(t *testing.T, m proto.Message) *anypb.Any {
+  t.Helper()
+  any, err := anypb.New(m)
+  if err != nil {
+    t.Fatalf("MustMarshalAny(t, m) = %v; want %v", err, nil)
+  }
+  return any
+}
+
+func TestCreateObject(t *testing.T) {
+  tests := []struct{
+    desc string
+    data *anypb.Any
+  }{
+    {
+      desc: "my test case",
+      // テーブルドリブンテストケース内で直接値を作成します。
+      data: mustMarshalAny(t, mypb.Object{}),
+    },
+    // ...
+  }
+  // ...
+}
+```
+
+これら両方のケースにおいて、このパターンの価値は、ヘルパーが「値」のコンテキストで呼び出されることができることです。これらのヘルパーは、エラーを確実に捕捉するのが難しい場所や、エラーを[チェックすべき](#エラー処理)コンテキスト（たとえば多くのリクエストハンドラなど）では呼ばれるべきではありません。定数入力の場合は、`Must`の引数が整形されていることを簡単に確認することができます。また、非定数入力の場合は、[エラーが適切に処理されたり伝搬されたりすること](#TBD)を確認することができます。
+
+`Must`関数がテスト内で使用される場合、一般的には[テストヘルパーとして位置づけ](#TBD)、エラー時に`t.Fatal`をコールするようにします（[テストヘルパーのエラー処理](#TBD)についての考察はこちら）。
+
+[通常のエラー処理](#TBD)が可能な場合は、使用しないでください（多少のリファクタリングも含む）。
+
+```go
+// Bad:
+func Version(o *servicepb.Object) (*version.Version, error) {
+    // Must関数を使用せず、エラーを返してください。
+    v := version.MustParse(o.GetVersionString())
+    return dealiasVersion(v)
+}
+```
