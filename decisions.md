@@ -48,6 +48,7 @@
     - [panicさせるな](#panicさせるな)
     - [Must関数](#must関数)
     - [ゴルーチンの寿命](#ゴルーチンの寿命)
+    - [インターフェース](#インターフェース)
 
 # Goスタイル決定事項
 
@@ -1680,3 +1681,61 @@ func (w *Worker) Run() {
 - [ゴルーチンがどのように停止するかを知らずに起動してはいけない](https://dave.cheney.net/2016/12/22/never-start-a-goroutine-without-knowing-how-it-will-stop)
 - 古典的な並行処理パターンの再考: [スライド](https://drive.google.com/file/d/1nPdvhB0PutEJzdCq5ms6UI58dp50fcAN/view)、[ビデオ](https://www.youtube.com/watch?v=5zXAHh5tJqQ)
 - [Goプログラムの終了時期](https://changelog.com/gotime/165)
+
+### インターフェース
+
+Goのインターフェースは一般的に、インターフェース型の値を*利用する*パッケージに属し、インターフェース型を*実装する*パッケージには属しません。実装するパッケージは具象型（通常はポインタか構造体）を返すべきです。そうすれば、大規模なリファクタリングを必要とせずに、新しいメソッドを実装に追加することができます。詳しくは[GoTip #49: インターフェースを受け入れ、具象型を返す](https://google.github.io/styleguide/go/index.html#gotip)を参照ください。
+
+あるインターフェースを利用するAPIから、そのインターフェースの[テストダブル](https://abseil.io/resources/swe-book/html/ch13.html#techniques_for_using_test_doubles)実装をエクスポートしてはいけません。そのかわり、[本物の実装](https://google.github.io/styleguide/go/best-practices#use-real-transports)の[公開API](https://abseil.io/resources/swe-book/html/ch12.html#test_via_public_apis)を使ってテストできるようなAPIを設計しましょう。詳しくは [GoTip #42: テスト用のスタブを作成する](https://google.github.io/styleguide/go/index.html#gotip)を参照してください。本当の実装を使うのが難しい場合でも、本当の型のすべてのメソッドを完全にカバーするインターフェイスを導入する必要はないかもしれません。[GoTip #78: 最小限の有効なインターフェース](https://google.github.io/styleguide/go/index.html#gotip)で示されているように、利用者は必要なメソッドのみを含むインターフェイスを作成することができます。
+
+Stubby RPCクライアントを使用するパッケージをテストするには、本物のクライアント接続を使用します。本物のサーバがテストに使えない場合、Googleの内部ではrpctestパッケージを使ってローカルの[テストダブル](https://abseil.io/resources/swe-book/html/ch13.html#techniques_for_using_test_doubles)に本物のクライアント接続を取得するようにしています（近日公開予定）。
+
+使用する前にインターフェースを定義しないでください ([TotT: Code Health: Eliminate YAGNI Smells](https://testing.googleblog.com/2017/08/code-health-eliminate-yagni-smells.html)を参照)。現実的な使用例がないと、どんなメソッドを含むべきかはおろか、インターフェースが必要かどうかさえも判断できません。
+
+パッケージのユーザがパラメータに異なる型を渡す必要がないのであれば、インターフェース型のパラメータを使わないでください。
+
+パッケージのユーザが必要としないインターフェースはエクスポートしないでください。
+
+**TODO**: インターフェイスについてのより詳細なドキュメントを書き、ここにリンクする。
+
+```go
+// Good:
+package consumer // consumer.go
+
+type Thinger interface { Thing() bool }
+
+func Foo(t Thinger) string { ... }
+```
+
+```go
+// Good:
+package consumer // consumer_test.go
+
+type fakeThinger struct{ ... }
+func (t fakeThinger) Thing() bool { ... }
+...
+if Foo(fakeThinger{...}) == "x" { ... }
+```
+
+```go
+// Bad:
+package producer
+
+type Thinger interface { Thing() bool }
+
+type defaultThinger struct{ ... }
+func (t defaultThinger) Thing() bool { ... }
+
+func NewThinger() Thinger { return defaultThinger{ ... } }
+```
+
+```go
+// Good:
+package producer
+
+type Thinger struct{ ... }
+func (t Thinger) Thing() bool { ... }
+
+func NewThinger() Thinger { return Thinger{ ... } }
+```
+
