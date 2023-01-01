@@ -1957,3 +1957,5 @@ fmt.Printf("value \"%s\" looks like English text", someText)
 // 文字列を手動でシングルクオートで折り返すことも避けてください。
 fmt.Printf("value '%s' looks like English text", someText)
 ```
+
+人間向けの出力で、入力値が空であったり制御文字を含む可能性がある場合は、`%q`を使用することをお勧めします。沈黙の空文字列に気づくのは非常に困難ですが、`""`は明らかに空文字列として目立ちます。
