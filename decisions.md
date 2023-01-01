@@ -52,6 +52,7 @@
     - [ジェネリクス](#ジェネリクス)
     - [値渡し](#値渡し)
     - [レシーバの型](#レシーバの型)
+    - [`switch`と`break`](#switchとbreak)
 
 # Goスタイル決定事項
 
@@ -1867,3 +1868,55 @@ func (t Time) Add(d Duration) Time { /* omitted */ }
 一般的なガイドラインとして、ある型のメソッドをすべてポインタメソッドまたはすべて値メソッドにすることが望ましいです。
 
 **注意**: 関数に値を渡すかポインタを渡すかでパフォーマンスに影響が出るかどうかについては、誤った情報が多いです。コンパイラは、スタック上の値のコピーと同様に、スタック上の値へのポインタを渡すことを選択できますが、これらの考慮事項は、ほとんどの状況でコードの可読性と正しさに勝るものではありません。性能が問題になる場合、一方のアプローチが他方より優れていると判断する前に、現実的なベンチマークで両方のアプローチのプロファイリングを行うことが重要です。
+
+### `switch`と`break`
+
+`switch`句の末尾にターゲットラベルのない`break`文を使用しないでください。冗長です。CやJavaとは異なり、Goの`switch`句は自動的にブレークします。Cスタイルの動作を実現するには、`fallthrough`文が必要です。空の節の目的をはっきりさせたい場合は、`break`ではなくコメントを使用してください。
+
+```go
+// Good:
+switch x {
+case "A", "B":
+    buf.WriteString(x)
+case "C":
+    // スイッチ文の外側で処理される
+default:
+    return fmt.Errorf("unknown value: %q", x)
+}
+```
+
+```go
+// Bad:
+switch x {
+case "A", "B":
+    buf.WriteString(x)
+    break // このbreakは冗長です
+case "C":
+    break // このbreakは冗長です
+default:
+    return fmt.Errorf("unknown value: %q", x)
+}
+```
+
+**注意**: `switch`節が`for`ループ内にある場合、`switch`内で`break`を使用しても、囲んでいる`for`ループは終了しません。
+
+```go
+for {
+  switch x {
+  case "A":
+     break // ループではなく、スイッチを終了させる
+  }
+}
+```
+
+囲んでいるループから抜け出すには、`for`文でラベルを使います。
+
+```go
+loop:
+  for {
+    switch x {
+    case "A":
+       break loop // exits the loop
+    }
+  }
+```
