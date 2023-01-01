@@ -55,6 +55,7 @@
     - [`switch`と`break`](#switchとbreak)
     - [同期関数](#同期関数)
     - [型エイリアス](#型エイリアス)
+    - [%qの使用](#qの使用)
 
 # Goスタイル決定事項
 
@@ -1938,3 +1939,21 @@ loop:
 ### 型エイリアス
 
 新しい型を定義するには、*型定義*`type T1 T2`を使用します。新しい型を定義せずに既存の型を参照するには、[型エイリアス](http://golang.org/ref/spec#Type_declarations)`type T1 = T2`を使用します。型エイリアスはまれなもので、主な用途は、パッケージを新しいソースコードの場所に移行するのを助けることです。必要でない場合は、型エイリアスを使用しないでください。
+
+### %qの使用
+
+Goのフォーマット関数（`fmt.Printf`など）には、ダブルクォーテーションで囲まれた文字列を表示する`%q`バーブがあります。
+
+```go
+// Good:
+fmt.Printf("value %q looks like English text", someText)
+```
+
+`%s`を使って手動で同等のことをするよりも、`%q`を使うことを優先してください。
+
+```go
+// Bad:
+fmt.Printf("value \"%s\" looks like English text", someText)
+// 文字列を手動でシングルクオートで折り返すことも避けてください。
+fmt.Printf("value '%s' looks like English text", someText)
+```
