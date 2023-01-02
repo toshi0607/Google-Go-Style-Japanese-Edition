@@ -57,6 +57,8 @@
     - [型エイリアス](#型エイリアス)
     - [%qの使用](#qの使用)
     - [anyの使用](#anyの使用)
+  - [共通ライブラリ](#共通ライブラリ)
+    - [フラグ](#フラグ)
 
 # Goスタイル決定事項
 
@@ -1964,3 +1966,37 @@ fmt.Printf("value '%s' looks like English text", someText)
 ### anyの使用
 
 Go 1.18 では、`interface{}`の[エイリアス](https://go.googlesource.com/proposal/+/master/design/18130-type-alias.md)として`any`型が導入されました。エイリアスなので、`any`は多くの状況で`interface{}`と同等ですが、他の状況では明示的な変換によって簡単に置き換えることができます。新しいコードでは`any`を使うことを優先してください。
+
+## 共通ライブラリ
+
+### フラグ
+
+GoogleのコードベースにおけるGoプログラムは、[標準の`flag`パッケージ](https://golang.org/pkg/flag/)の内部バージョン を使用しています。これは似たようなインターフェイスですが、Googleの内部システムとの相互運用性が高いです。Goバイナリのフラグ名は、アンダースコアで単語を区切るのが好ましいですが、 フラグの値を保持する変数は標準の Go名スタイル（[ミックスキャップ](guide.md#ミックスキャップ）に従わなければなりません。具体的には、フラグ名はスネークケースで、変数名はキャメルケースで同等の名前にします。
+
+```go
+// Good:
+var (
+    pollInterval = flag.Duration("poll_interval", time.Minute, "Interval to use for polling.")
+)
+```
+
+```go
+// Bad:
+var (
+    poll_interval = flag.Int("pollIntervalSeconds", 60, "Interval to use for polling in seconds.")
+)
+```
+
+フラグは、`package main`またはそれに相当するパッケージでのみ定義する必要があります。
+
+汎用パッケージはコマンドラインインターフェイスではなく、GoのAPIを使って設定する必要があります。つまり、明示的な関数引数や構造体フィールドの割り当て、あるいは、あまり頻繁ではありませんが、厳密な精査のもとでエクスポートされたグローバル変数が望ましいのです。このルールを破る必要がある極めて稀なケースとして、フラグの名前に設定するパッケージを明示する必要があります。
+
+フラグがグローバル変数である場合、importsのセクションにしたがって、独自の`var`グループに配置してください。
+
+サブコマンドを含む[複雑なCLI](#TBD)を作成するためのベストプラクティスに関する追加的な議論があります。
+
+こちらもご覧ください。
+
+- [Tip of the Week #45: 特にライブラリコードではフラグを避けること](https://abseil.io/tips/45)
+- [Go Tip #10: 設定用構造体とフラグ](https://google.github.io/styleguide/go/index.html#gotip)
+- [Go Tip #80: 依存性注入の原則](https://google.github.io/styleguide/go/index.html#gotip)
