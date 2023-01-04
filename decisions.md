@@ -68,6 +68,7 @@
     - [関数の識別](#関数の識別)
     - [入力の識別](#入力の識別)
     - [期待する値の前に実際の値](#期待する値の前に実際の値)
+    - [構造全体の比較](#構造全体の比較)
 
 # Goスタイル決定事項
 
@@ -2202,3 +2203,30 @@ func TestBlogPost_VeritableRant(t *testing.T) {
 テスト出力には、期待された値を表示する前に、関数が実際に返した値を含める必要があります。テスト出力を表示するための標準的な書式は`YourFunc(%v) = %v, want %v`です。「actual」と「expected」と書くところは、それぞれ「got」と「want」という言葉を優先してください。
 
 差分については、方向性はあまり明確ではありません。そのため、失敗を解釈するのに役立つキーを含めることが重要です。[差分のプリント](#TBD)のセクションを参照してください。失敗メッセージでどの差分の順番を使うにしても、失敗メッセージの一部として明示的に示すべきです。既存のコードは順番について一貫性がないからです。
+
+### 構造全体の比較
+
+関数が構造体（またはスライス、配列、マップなど複数のフィールドを持つデータ型）を返す場合、構造体のフィールドごとの比較を手作業で行うテスト コードを書くのは避けてください。その代わり、関数が返すと予想されるデータを作成し、[深い比較](#TBD)を使って直接比較します。
+
+**注意**: データに無関係なフィールドが含まれていて、テストの意図が不明になっている場合は、この限りではありません。
+
+構造体を近似的な（または同等の意味での）等価性で比較する必要がある場合や、等価性で比較できないフィールドが含まれている場合（フィールドの1つが`io.Reader`の場合など）、[`cmpopts.IgnoreInterfaces`](https://pkg.go.dev/github.com/google/go-cmp/cmp/cmpopts#IgnoreInterfaces)などの[`cmpopts`](https://pkg.go.dev/github.com/google/go-cmp/cmp/cmpopts)オプションで、[`cmp.Diff`](https://pkg.go.dev/github.com/google/go-cmp/cmp/cmp#Diff)または[`cmp.Equal`](https://pkg.go.dev/github.com/google/go-cmp/cmp#Equal)比較を調整すれば要件を満たす場合があります（[例](https://play.golang.org/p/vrCUNVfxsvF)）。
+
+関数が複数の戻り値を返す場合、それらを構造体でラップしてから比較する必要はありません。返り値を個別に比較し、それを表示するだけです。
+
+```go
+// Good:
+val, multi, tail, err := strconv.UnquoteChar(`\"Fran & Freddie's Diner\"`, '"')
+if err != nil {
+  t.Fatalf(...)
+}
+if val != `"` {
+  t.Errorf(...)
+}
+if multi {
+  t.Errorf(...)
+}
+if tail != `Fran & Freddie's Diner"` {
+  t.Errorf(...)
+}
+```
