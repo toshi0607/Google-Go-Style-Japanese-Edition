@@ -64,6 +64,7 @@
       - [カスタムコンテキスト](#カスタムコンテキスト)
     - [crypto/rand](#cryptorand)
   - [有用なテスト失敗](#有用なテスト失敗)
+    - [アサーションライブラリ](#アサーションライブラリ)
 
 # Goスタイル決定事項
 
@@ -2108,3 +2109,79 @@ func Key() string {
 - 期待された結果
 
 この目標を達成するための具体的な規約を以下に示します。
+
+### アサーションライブラリ
+
+テスト用のヘルパーとして「アサーションライブラリ」を作らないでください。
+
+アサーションライブラリは、失敗メッセージの検証や生成をテスト内にまとめようとするライブラリです（ただし、他のテストヘルパーにも同じ落とし穴があります）。テストヘルパーとアサーションライブラリの区別については、 [ベストプラクティス](#TBD)を参照してください。
+
+```go
+// Bad:
+var obj BlogPost
+
+assert.IsNotNil(t, "obj", obj)
+assert.StringEq(t, "obj.Type", obj.Type, "blogPost")
+assert.IntEq(t, "obj.Comments", obj.Comments, 2)
+assert.StringNotEq(t, "obj.Body", obj.Body, "")
+```
+
+アサーションライブラリは、テストを早期に停止させるか （`assert`が`t.Fatalf`を呼び出したり`panic`を起こしたりした場合）、テストが正しく行われたかについての関連情報を省略しがちです。
+
+```go
+// Bad:
+package assert
+
+func IsNotNil(t *testing.T, name string, val interface{}) {
+    if val == nil {
+        t.Fatalf("data %s = nil, want not nil", name)
+    }
+}
+
+func StringEq(t *testing.T, name, got, want string) {
+    if got != want {
+        t.Fatalf("data %s = %q, want %q", name, got, want)
+    }
+}
+```
+
+複雑なアサーション関数は、有用な失敗メッセージやテスト関数内に存在するコンテキストを提供しないことがよくあります。アサーション関数やライブラリが多すぎるため、開発者体験が断片的になってしまいます。どのアサーションライブラリを使うべきか、どのような出力形式を出すべきかなどにおいてです。特に、ライブラリのメンテナや大規模な変更の作成者は、下流で発生しうる不具合を修正する責任があります。テスト用にドメイン固有の言語を作成する代わりに、Goそのものを使いましょう。
+
+アサーションライブラリは、しばしば比較や等値チェックを省きます。代わりに`cmp`や`fmt`のような標準的なライブラリを使用することを優先してください。
+
+```go
+// Good:
+var got BlogPost
+
+want := BlogPost{
+    Comments: 2,
+    Body:     "Hello, world!",
+}
+
+if !cmp.Equal(got, want) {
+    t.Errorf("blog post = %v, want = %v", got, want)
+}
+```
+
+よりドメインに特化した比較ヘルパーでは、`*testing.T`を渡してそのエラー報告メソッドを呼び出すのではなく、テストの失敗メッセージで使用できる値やエラーを返すようにしましょう。
+
+```go
+// Good:
+func postLength(p BlogPost) int { return len(p.Body) }
+
+func TestBlogPost_VeritableRant(t *testing.T) {
+    post := BlogPost{Body: "I am Gunnery Sergeant Hartman, your senior drill instructor."}
+
+    if got, want := postLength(post), 60; got != want {
+        t.Errorf("length of post = %v, want %v", got, want)
+    }
+}
+```
+
+**ベストプラクティス**: `postLength`が自明でない場合、それを使用するテストとは別に、直接それをテストすることは理にかなっています。
+
+こちらもご覧ください。
+
+- [等価比較と差分](#TBD)
+- [差分のプリント](#TBD)
+- テストヘルパーとアサーションヘルパーの区別については[ベストプラクティス](#TBD)を参照ください
