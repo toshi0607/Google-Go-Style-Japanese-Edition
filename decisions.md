@@ -62,6 +62,7 @@
     - [ロギング](#ロギング)
     - [コンテキスト](#コンテキスト)
       - [カスタムコンテキスト](#カスタムコンテキスト)
+    - [crypto/rand](#cryptorand)
 
 # Goスタイル決定事項
 
@@ -2067,3 +2068,31 @@ Googleのコードベースの中で、親コンテキストがキャンセル�
 もしすべてのチームがカスタムコンテキストを持っていたらと想像してください。パッケージPからパッケージQへの関数呼び出しは、パッケージPとQのすべてのペアについて、`PContext`を`QContext`に変換する方法を決定しなければならないでしょう。これは人間にとって非現実的で、エラーを起こしやすく、コンテキストパラメータを追加する自動リファクタリングをほぼ不可能にします。
 
 アプリケーションのデータを渡す場合は、パラメータやレシーバ、グローバル、あるいはContextの値（本当にそこに属するものであれば）に入れるようにしましょう。独自の Context 型を作成することは、Goプログラムをプロダクション環境で正しく動作させるというGoチームの能力を損なうため、認められません。
+
+### crypto/rand
+
+キーを生成するために、たとえ使い捨てのものであっても`math/rand`パッケージを使わないでください。シードされない場合、ジェネレータは完全に予測可能です。`time.Nanoseconds()`でシードされた場合、ほんの数ビットのエントロピーが存在します。テキストが必要な場合は、16進数かbase64で出力してください。
+
+```go
+// Good:
+import (
+    "crypto/rand"
+    // "encoding/base64"
+    // "encoding/hex"
+    "fmt"
+
+    // ...
+)
+
+func Key() string {
+    buf := make([]byte, 16)
+    if _, err := rand.Read(buf); err != nil {
+        log.Fatalf("Out of randomness, should never happen: %v", err)
+    }
+    return fmt.Sprintf("%x", buf)
+    // or hex.EncodeToString(buf)
+    // or base64.StdEncoding.EncodeToString(buf)
+}
+```
+
+**注意**: `log.Fatalf`は標準ライブラリのログではありません。[ロギング](#ロギング)を参照してください。
