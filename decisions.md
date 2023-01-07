@@ -77,6 +77,7 @@
     - [テストエラーセマンティクス](#テストエラーセマンティクス)
   - [テスト構造](#テスト構造)
     - [サブテスト](#サブテスト)
+      - [サブテスト名](#サブテスト名)
 
 # Goスタイル決定事項
 
@@ -2360,3 +2361,57 @@ if gotErr != test.wantErr {
 標準のGoテストライブラリには、[サブテストを定義する](https://pkg.go.dev/testing#hdr-Subtests_and_Sub_benchmarks)機能があります。これにより、セットアップや後片付け、並列性の制御、テストのフィルタリングなどを柔軟に行うことができます。サブテストは便利ですが（特にテーブル駆動テストの場合）、使用は必須ではありません。[サブテストについては、Goブログの記事](https://blog.golang.org/subtests)も参照ください。
 
 サブテストは、成功や初期状態のために他のケースの実行に依存してはいけません。 サブテストは、`go test -run`フラグやBazelの[テストフィルター](https://bazel.build/docs/user-manual#test-filter)式を使って個別に実行できることが期待されています。
+
+#### サブテスト名
+
+サブテストには、テスト出力で読みやすく、テストフィルタリングの利用者にとってコマンドライン上で便利な名前を付けてください。`t.Run`を使用してサブテストを作成する場合、最初の引数はテストの説明的な名前として使用されます。テスト結果がログを読む人間にとって読みやすいものになるように、 サブテスト名は、エスケープ後も有用で読みやすいものを選んでください。サブテスト名は、説明文というよりは関数の識別子のようなものだと考えてください。テストランナーでは、スペースをアンダースコアに置き換え、プリントされない文字をエスケープします。テストデータに長い説明が必要な場合は、説明を別のフィールドに書くことを検討してください（おそらく `t.Log`を使って出力するか、失敗メッセージと一緒に出力することになるでしょう）。
+
+サブテストは、[Goのテストランナー](https://golang.org/cmd/go/#hdr-Testing_flags)やBazelの[テストフィルター](https://bazel.build/docs/user-manual#test-filter)のフラグを使用して個別に実行することができるので、説明的で入力しやすい名前を選択します。
+
+**警告**: スラッシュ文字は、[テストフィルターにとって特別な意味](https://blog.golang.org/subtests#:~:text=Perhaps%20a%20bit,match%20any%20tests)を持つため、サブテスト名には特に不親切です。
+
+```go
+# Bad:
+# Assuming TestTime and t.Run("America/New_York", ...)
+bazel test :mytest --test_filter="Time/New_York"    # 何も実行しない
+bazel test :mytest --test_filter="Time//New_York"   # 正しいが不自然
+```
+
+関数の[入力を識別する](#入力の識別)には、テストの失敗メッセージにそれらを含めると、テストランナーによってエスケープされることはありません。
+
+```go
+// Good:
+func TestTranslate(t *testing.T) {
+    data := []struct {
+        name, desc, srcLang, dstLang, srcText, wantDstText string
+    }{
+        {
+            name:        "hu=en_bug-1234",
+            desc:        "regression test following bug 1234. contact: cleese",
+            srcLang:     "hu",
+            srcText:     "cigarettát és egy öngyújtót kérek",
+            dstLang:     "en",
+            wantDstText: "cigarettes and a lighter please",
+        }, // ...
+    }
+    for _, d := range data {
+        t.Run(d.name, func(t *testing.T) {
+            got := Translate(d.srcLang, d.dstLang, d.srcText)
+            if got != d.wantDstText {
+                t.Errorf("%s\nTranslate(%q, %q, %q) = %q, want %q",
+                    d.desc, d.srcLang, d.dstLang, d.srcText, got, d.wantDstText)
+            }
+        })
+    }
+}
+```
+
+ここでは、避けるべき例をいくつか紹介します。
+
+```go
+// Bad:
+// 冗長すぎます。
+t.Run("check that there is no mention of scratched records or hovercrafts", ...)
+// スラッシュはコマンドライン上で問題を起こす原因となります。
+t.Run("AM/PM confusion", ...)
+```
