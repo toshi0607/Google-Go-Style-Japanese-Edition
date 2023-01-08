@@ -81,6 +81,7 @@
     - [テーブル駆動テスト](#テーブル駆動テスト)
       - [データ駆動テストケース](#データ駆動テストケース)
       - [行の識別](#行の識別)
+    - [テストヘルパー](#テストヘルパー)
 
 # Goスタイル決定事項
 
@@ -2585,3 +2586,34 @@ for i, d := range tests {
 テスト構造体にテストの説明を追加し、失敗メッセージと一緒にプリントします。サブテストを使用する場合、サブテスト名は行を識別するのに有効である必要があります。
 
 **重要**: `t.Run`が出力と実行を範囲指定しても、常に[入力を識別する](#入力の識別)必要があります。テーブルのテスト行の名前は、[サブテストの命名](#サブテスト名)ガイダンスに従わなければなりません。
+
+### テストヘルパー
+
+テストヘルパーは、セットアップやクリーンアップのタスクを実行する関数です。テストヘルパーで発生するすべての失敗は、（テスト対象のコードの失敗ではなく） 環境の失敗であることが期待されます。たとえば、このマシンにはもう空きポートがないため テスト用のデータベースを起動できない場合などです。
+
+もし`*testing.T`を渡した場合、[`t.Helper`](https://pkg.go.dev/testing#T.Helper)を呼んでテストヘルパーの失敗をヘルパーが呼ばれた行に帰着させます。このパラメータは、[context](#コンテキスト)パラメータがある場合はその後に、残りのパラメータの前に置く必要があります。
+
+```go
+// Good:
+func TestSomeFunction(t *testing.T) {
+    golden := readFile(t, "testdata/golden-result.txt")
+    // ... tests against golden ...
+}
+
+// readFile returns the contents of a data file.
+// It must only be called from the same goroutine as started the test.
+func readFile(t *testing.T, filename string) string {
+    t.Helper()
+    contents, err := runfiles.ReadFile(filename)
+    if err != nil {
+        t.Fatal(err)
+    }
+    return string(contents)
+}
+```
+
+このパターンは、テストの失敗とそれに至った条件との関連性を見えなくしてしまう場合には使用しないでください。特に、[アサートライブラリ](#アサーションライブラリ)に関するガイダンスがまだ適用されており、[`t.Helper`](https://pkg.go.dev/testing#T.Helper)はそのようなライブラリを実装するために使用すべきではありません。
+
+**ヒント**: テストヘルパーとアサーションヘルパーの区別については、[ベストプラクティス](#TBD)を参照ください。
+
+上記は`*testing.T`についてですが、多くのアドバイスはベンチマークヘルパーやファジングヘルパーについても同じです。
