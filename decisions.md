@@ -79,6 +79,7 @@
     - [サブテスト](#サブテスト)
       - [サブテスト名](#サブテスト名)
     - [テーブル駆動テスト](#テーブル駆動テスト)
+      - [データ駆動テストケース](#データ駆動テストケース)
 
 # Goスタイル決定事項
 
@@ -2463,3 +2464,100 @@ func TestCompare(t *testing.T) {
 あるテストケースが他のテストケースと異なるロジックでチェックされる必要がある場合、[GoTip #50: テーブルテストの分解](https://google.github.io/styleguide/go/index.html#gotip)で説明されているように、複数のテスト関数を書くことがより適切です。テーブルの各エントリで、入力に対する出力をチェックするための条件ロジックがそれぞれ異なる場合、テストコードのロジックが理解しづらくなることがあります。もしテストケースのロジックが異なっていても設定が同じなら、 ひとつのテスト関数の中で複数の[サブテスト](#サブテスト)を並べるのが理にかなっているかもしれません。
 
 テーブル駆動テストと複数のテスト関数を組み合わせることができます。たとえば、ある関数の出力が期待通りのものであるかどうか、そして無効な入力に対してnilではないエラーを返すかどうかをテストする場合、 ふたつの別々のテーブル駆動テスト関数を書くのが最適な方法となります。
+
+#### データ駆動テストケース
+
+テーブルテストの行は、行の値がテストケース内の条件動作を決定するため、時に複雑になることがあります。テストケース間の重複による過剰な明確化は、読みやすさのために必要です。
+
+```go
+// Good:
+type decodeCase struct {
+    name   string
+    input  string
+    output string
+    err    error
+}
+
+func TestDecode(t *testing.T) {
+    // setupCodexはテスト用に本物のCodexを生成するため遅いです。
+    codex := setupCodex(t)
+
+    var tests []decodeCase // 簡略化のため行は省略
+
+    for _, test := range tests {
+        t.Run(test.name, func(t *testing.T) {
+            output, err := Decode(test.input, codex)
+            if got, want := output, test.output; got != want {
+                t.Errorf("Decode(%q) = %v, want %v", test.input, got, want)
+            }
+            if got, want := err, test.err; !cmp.Equal(got, want) {
+                t.Errorf("Decode(%q) err %q, want %q", test.input, got, want)
+            }
+        })
+    }
+}
+
+func TestDecodeWithFake(t *testing.T) {
+    // fakeCodexは本物のCodexを高速に近似したものです。
+    codex := newFakeCodex()
+
+    var tests []decodeCase // 簡略化のため行は省略
+
+    for _, test := range tests {
+        t.Run(test.name, func(t *testing.T) {
+            output, err := Decode(test.input, codex)
+            if got, want := output, test.output; got != want {
+                t.Errorf("Decode(%q) = %v, want %v", test.input, got, want)
+            }
+            if got, want := err, test.err; !cmp.Equal(got, want) {
+                t.Errorf("Decode(%q) err %q, want %q", test.input, got, want)
+            }
+        })
+    }
+}
+```
+
+以下の反例では、テストケースのセットアップにおいて、テストケース毎にどのタイプのCodexが使用されているかを区別することがいかに困難であるかに注目してください。（ハイライトされた部分は、[TotT: データ駆動の罠!](https://testing.googleblog.com/2008/09/tott-data-driven-traps.html)のアドバイスに反しています。)
+
+```go
+// Bad:
+type decodeCase struct {
+  name   string
+  input  string
+  codex  testCodex
+  output string
+  err    error
+}
+
+type testCodex int
+
+const (
+  fake testCodex = iota
+  prod
+)
+
+func TestDecode(t *testing.T) {
+  var tests []decodeCase // 簡略化のため行は省略
+
+  for _, test := tests {
+    t.Run(test.name, func(t *testing.T) {
+      var codex Codex
+      switch test.codex {
+      case fake:
+        codex = newFakeCodex()
+      case prod:
+        codex = setupCodex(t)
+      default:
+        t.Fatalf("unknown codex type: %v", codex)
+      }
+      output, err := Decode(test.input, codex)
+      if got, want := output, test.output; got != want {
+        t.Errorf("Decode(%q) = %q, want %q", test.input, got, want)
+      }
+      if got, want := err, test.err; !cmp.Equal(got, want) {
+        t.Errorf("Decode(%q) err %q, want %q", test.input, got, want)
+      }
+    })
+  }
+}
+```
