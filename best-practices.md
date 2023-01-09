@@ -82,3 +82,46 @@ func Transform(input *Config) *jsonconfig.Config
 func (c *Config) WriteTextTo(w io.Writer) (int64, error)
 func (c *Config) WriteBinaryTo(w io.Writer) (int64, error)
 ```
+
+#### 命名規則
+
+関数やメソッドの名前を決める際には、他にもいくつかの共通した慣例があります。
+
+- 何かを返す関数には、名詞のような名前を付けます。
+
+```go
+// Good:
+func (c *Config) JobName(key string) (value string, ok bool)
+```
+
+このことから、関数名やメソッド名には[接頭辞`Get`を付けるべきではありません](decisions.md#ゲッター)。
+
+```go
+// Bad:
+func (c *Config) GetJobName(key string) (value string, ok bool)
+```
+
+- 何かをする関数には動詞のような名前をつけます。
+
+```go
+// Good:
+func (c *Config) WriteDetail(w io.Writer) (int64, error)
+```
+
+- 型が異なるだけで同一の関数には、名前の最後に型の名前を付けます。
+
+```go
+// Good:
+func ParseInt(input string) (int, error)
+func ParseInt64(input string) (int64, error)
+func AppendInt(buf []byte, value int) []byte
+func AppendInt64(buf []byte, value int64) []byte
+```
+
+明確な「主」バージョンがある場合、そのバージョンの名前から型を省略できます。
+
+```go
+// Good:
+func (c *Config) Marshal() ([]byte, error)
+func (c *Config) MarshalText() (string, error)
+```
