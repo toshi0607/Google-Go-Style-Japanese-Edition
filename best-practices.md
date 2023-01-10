@@ -125,3 +125,38 @@ func AppendInt64(buf []byte, value int64) []byte
 func (c *Config) Marshal() ([]byte, error)
 func (c *Config) MarshalText() (string, error)
 ```
+
+### テストダブルパッケージと型
+
+テストヘルパー、特にテストダブルを提供するパッケージや型の命名に適用できる規則がいくつかあります。テストダブルは、スタブ、フェイク、モック、スパイのいずれかです。
+
+これらの例では、ほとんどスタブを使っています。もしあなたのコードがフェイクや他の種類のテストダブルを使用している場合は、 それに応じて名前を更新してください。
+
+このようなプロダクションコードを提供する、焦点を絞ったパッケージがあるとします。
+
+```go
+package creditcard
+
+import (
+    "errors"
+
+    "path/to/money"
+)
+
+// ErrDeclined indicates that the issuer declines the charge.
+var ErrDeclined = errors.New("creditcard: declined")
+
+// Card contains information about a credit card, such as its issuer,
+// expiration, and limit.
+type Card struct {
+    // 省略
+}
+
+// Service allows you to perform operations with credit cards against external
+// payment processor vendors like charge, authorize, reimburse, and subscribe.
+type Service struct {
+    // 省略
+}
+
+func (s *Service) Charge(c *Card, amount money.Money) error { /* 省略 */ }
+```
