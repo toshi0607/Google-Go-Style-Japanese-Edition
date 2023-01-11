@@ -232,3 +232,41 @@ func (AlwaysDeclines) Charge(*creditcard.Card, money.Money) error {
     return creditcard.ErrDeclined
 }
 ```
+
+#### 複数の型の複数のダブル
+
+しかし、ここで`Service`と`StoredValue`のように、`package creditcard`には、ダブルを作成する価値のある複数の型が含まれているとします。
+
+```go
+package creditcard
+
+type Service struct {
+    // 省略
+}
+
+type Card struct {
+    // 省略
+}
+
+// StoredValueは顧客のクレジット残高を管理します。これは、返品された商品をクレジット発行会社で処理せず、
+// 顧客のローカルアカウントに入金する場合に適用されます。
+// そのため、別サービスとして実装しています。
+type StoredValue struct {
+    // 省略
+}
+
+func (s *StoredValue) Credit(c *Card, amount money.Money) error { /* 省略 */ }
+```
+
+この場合、より明示的なテストダブルの命名が賢明です。
+
+```go
+// Good:
+type StubService struct{}
+
+func (StubService) Charge(*creditcard.Card, money.Money) error { return nil }
+
+type StubStoredValue struct{}
+
+func (StubStoredValue) Credit(*creditcard.Card, money.Money) error { return nil }
+```
