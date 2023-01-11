@@ -213,3 +213,22 @@ go_library(
 つぎの記事もご覧ください。
 
 - [Go Tip #42: テスト用スタブの作成](https://google.github.io/styleguide/go/index.html#gotip)
+
+#### テストダブルの複数の挙動
+
+一種類のスタブでは不十分な場合（たとえば、常に失敗するスタブも必要な場合）、エミュレートする動作に応じてスタブに名前を付けることを推奨します。ここでは、`Stub`を`AlwaysCharges`に変更し、`AlwaysDeclinesPという新しいスタブを導入しています。
+
+```go
+// Good:
+// AlwaysCharges stubs creditcard.Service and simulates success.
+type AlwaysCharges struct{}
+
+func (AlwaysCharges) Charge(*creditcard.Card, money.Money) error { return nil }
+
+// AlwaysDeclines stubs creditcard.Service and simulates declined charges.
+type AlwaysDeclines struct{}
+
+func (AlwaysDeclines) Charge(*creditcard.Card, money.Money) error {
+    return creditcard.ErrDeclined
+}
+```
