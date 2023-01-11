@@ -173,3 +173,43 @@ package creditcardtest
 ```
 
 特に明示しない限り、以下のセクションの例はすべて`package creditcardtest`です。
+
+#### シンプルなケース
+
+`Service`のテストダブルのセットを追加したいします。`Card`は事実上、プロトコルバッファメッセージと同様のダムデータ型なので、 テストで特別な処理をする必要はなく、ダブルは必要ありません。もし、1つの型（`Service`など）のみをテストするのであれば、ダブルの名前を簡潔にすることができます。
+
+```go
+// Good:
+import (
+    "path/to/creditcard"
+    "path/to/money"
+)
+
+// Stub stubs creditcard.Service and provides no behavior of its own.
+type Stub struct{}
+
+func (Stub) Charge(*creditcard.Card, money.Money) error { return nil }
+```
+
+これは、`StubService`や`StubCreditCardService`のような貧弱な命名法よりもはるかに望ましい選択です。なぜなら、ベースパッケージ名とそのドメインタイプは、`creditcardtest.Stub`が何であるかを暗示しているからです。
+
+最後に、もしパッケージがBazelでビルドされている場合、そのパッケージの新しい`go_library`ルールが`testonly`としてマークされていることを確認してください。
+
+```go
+# Good:
+go_library(
+    name = "creditcardtest",
+    srcs = ["creditcardtest.go"],
+    deps = [
+        ":creditcard",
+        ":money",
+    ],
+    testonly = True,
+)
+```
+
+上記の考え方は慣用的なものであり、他の技術者にも相応に理解されるでしょう。
+
+つぎの記事もご覧ください。
+
+- [Go Tip #42: テスト用スタブの作成](https://google.github.io/styleguide/go/index.html#gotip)
