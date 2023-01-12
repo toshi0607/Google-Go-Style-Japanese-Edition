@@ -441,3 +441,32 @@ func LongFunction() {
     // おっと、これで以下のコードでnet/urlが使えなくなりましたね。
 }
 ```
+
+### Utilパッケージ
+
+Goのパッケージは、インポートパスとは別に、`package`宣言で名前が指定されます。パッケージ名は、パスよりも読みやすさのために重要です。
+
+Go のパッケージ名は、[そのパッケージが提供するもの](decisions.md#パッケージ名)に関連したものであるべきです。パッケージの名前を`util`、`helper`、`common`やそれに類するものにするだけでは、たいてい間違った選択です（名前の*一部*として使用することはできます）。また、あまりに広範に使用すると、無用な[インポートの衝突](decisions.md#インポート名変更)を引き起こしかねません。
+
+その代わりに、呼び出し元がどのようなものになるかを考えてください。
+
+```go
+// Good:
+db := spannertest.NewDatabaseFromFile(...)
+
+_, err := f.Seek(0, io.SeekStart)
+
+b := elliptic.Marshal(curve, x, y)
+```
+
+importsリスト（`cloud.google.com/go/spanner/spanertest`、`io`、`crypto/elliptic`）を知らなくても、それぞれが何をするのか大体わかると思います。あまり焦点を絞らない名前にすると、これらは次のようになります。
+
+
+```go
+// Bad:
+db := test.NewDatabaseFromFile(...)
+
+_, err := f.Seek(0, common.SeekStart)
+
+b := helper.Marshal(curve, x, y)
+```
