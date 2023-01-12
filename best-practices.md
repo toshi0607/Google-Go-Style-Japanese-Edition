@@ -270,3 +270,89 @@ type StubStoredValue struct{}
 
 func (StubStoredValue) Credit(*creditcard.Card, money.Money) error { return nil }
 ```
+
+#### テストにおけるローカル変数
+
+テストの変数がダブルを参照する場合は、コンテキストから他のプロダクションタイプとダブルを明確に区別できるような名前を選択します。テストしたいプロダクションコードを考えてみましょう。
+
+```go
+package payment
+
+import (
+    "path/to/creditcard"
+    "path/to/money"
+)
+
+type CreditCard interface {
+    Charge(*creditcard.Card, money.Money) error
+}
+
+type Processor struct {
+    CC CreditCard
+}
+
+var ErrBadInstrument = errors.New("payment: instrument is invalid or expired")
+
+func (p *Processor) Process(c *creditcard.Card, amount money.Money) error {
+    if c.Expired() {
+        return ErrBadInstrument
+    }
+    return p.CC.Charge(c, amount)
+}
+```
+
+テストでは、`CreditCard`の「スパイ」と呼ばれるテストダブルがプロダクション型と並列に配置されているので、名前にプレフィックスを付けることで分かりやすさが向上する可能性があります。
+
+```go
+// Good:
+package payment
+
+import "path/to/creditcardtest"
+
+func TestProcessor(t *testing.T) {
+    var spyCC creditcardtest.Spy
+
+    proc := &Processor{CC: spyCC}
+
+    // 宣言省略: cardとamount
+    if err := proc.Process(card, amount); err != nil {
+        t.Errorf("proc.Process(card, amount) = %v, want %v", got, want)
+    }
+
+    charges := []creditcardtest.Charge{
+        {Card: card, Amount: amount},
+    }
+
+    if got, want := spyCC.Charges, charges; !cmp.Equal(got, want) {
+        t.Errorf("spyCC.Charges = %v, want %v", got, want)
+    }
+}
+```
+
+これは、名前にプレフィックスが付いていない場合よりも明確です。
+
+```go
+// Bad:
+package payment
+
+import "path/to/creditcardtest"
+
+func TestProcessor(t *testing.T) {
+    var cc creditcardtest.Spy
+
+    proc := &Processor{CC: cc}
+
+    // 宣言省略: cardとamount
+    if err := proc.Process(card, amount); err != nil {
+        t.Errorf("proc.Process(card, amount) = %v, want %v", got, want)
+    }
+
+    charges := []creditcardtest.Charge{
+        {Card: card, Amount: amount},
+    }
+
+    if got, want := cc.Charges, charges; !cmp.Equal(got, want) {
+        t.Errorf("cc.Charges = %v, want %v", got, want)
+    }
+}
+```
