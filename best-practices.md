@@ -356,3 +356,88 @@ func TestProcessor(t *testing.T) {
     }
 }
 ```
+
+### シャドーイング
+
+注意: この説明では、*ストンピング*と*シャドーイング*という2つの非公式な用語を使っています。これらはGo言語仕様の公式な概念ではありません。
+
+多くのプログラミング言語と同様に、Goにはミュータブル変数があります。
+
+```go
+// Good:
+func abs(i int) int {
+    if i < 0 {
+        i *= -1
+    }
+    return i
+}
+```
+
+[短い変数宣言](https://go.dev/ref/spec#Short_variable_declarations)を`:=`演算子で使用する場合、場合によっては新しい変数が作成されないことがあります。これをストンプと呼びます。元の値が不要になったときに行うときは問題ありません。
+
+```go
+// Good:
+// innerHandlerはリクエストハンドラのヘルパーで、
+// それ自身が他のバックエンドにリクエストを発行します。
+func (s *Server) innerHandler(ctx context.Context, req *pb.MyRequest) *pb.MyResponse {
+    // リクエスト処理のこの部分の期限を無条件で制限します。
+    ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+    defer cancel()
+    ctxlog.Info(ctx, "Capped deadline in inner request")
+
+    // ここでのコードは、もう元のコンテキストにアクセスすることはできません。
+    // これは、最初にこれを書いたときに、コードが大きくなっても
+    // 呼び出し元が提供した（おそらくバインドされていない）元のコンテキストを
+    // 正当に使うべき操作がないことを予期している場合、良いスタイルです。
+
+    // ...
+}
+```
+
+しかし、新しいスコープで短い変数宣言を使用すると、新しい変数が導入されることになるので注意が必要です。これを元の変数のシャドーイングと呼びます。ブロックの終わりから先のコードは元の変数を参照します。以下は、条件付きで期限を短くするバグのような例です。
+
+```go
+// Bad:
+func (s *Server) innerHandler(ctx context.Context, req *pb.MyRequest) *pb.MyResponse {
+    // 条件付きで期限の上限を設定することを試みます。
+    if *shortenDeadlines {
+        ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+        defer cancel()
+        ctxlog.Info(ctx, "Capped deadline in inner request")
+    }
+
+    // バグ: ここでも「ctx」は呼び出し元が提供したコンテキストを意味します。
+    // 上記のバグがあるコードがコンパイルされたのは、
+    // if文の中でctxとcancelの両方が使われていたためです。
+
+    // ...
+}
+```
+
+正しいバージョンのコードはこうかもしれません。
+
+```go
+// Good:
+func (s *Server) innerHandler(ctx context.Context, req *pb.MyRequest) *pb.MyResponse {
+    if *shortenDeadlines {
+        var cancel func()
+        // 単純な代入である「=」を使い、「:=」を使わないことに注意します。
+        ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
+        defer cancel()
+        ctxlog.Info(ctx, "Capped deadline in inner request")
+    }
+    // ...
+}
+```
+
+ストンプと呼んだ場合、新しい変数がないため、代入される型は元の変数と一致しなければなりません。シャドーイングでは、全く新しい実体が導入されるので、異なる型を持つことができます。意図的なシャドーイングは便利な方法ですが、[明確さ](guide.md#明確さ)が向上するのであれば、いつでも新しい名前を使用することができます。
+
+標準パッケージと同じ名前の変数を使用することは、非常に小さなスコープを除いて、良いアイデアではありません。逆に、パッケージの名前を決める際には、[インポートの名前変更](decisions.md#インポート名変更)が必要になるような名前や、クライアント側で他の良い変数名のシャドーイングを引き起こすような名前は避けてください。
+
+```go
+// Bad:
+func LongFunction() {
+    url := "https://example.com/"
+    // おっと、これで以下のコードでnet/urlが使えなくなりましたね。
+}
+```
