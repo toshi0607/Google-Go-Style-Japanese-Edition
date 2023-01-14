@@ -490,3 +490,41 @@ Google のコードベースやBazelを使用したプロジェクトでは、Go
 つぎの記事もご覧ください。
 
 - [テストダブルパッケージ](#テストダブルパッケージと型)
+
+## インポート
+
+### プロトとスタブ
+
+プロトライブラリのインポートは、その言語横断的な性質により、標準のGoインポートとは異なる扱いを受けます。名前を変更したプロトインポートの規約は、そのパッケージを生成したルールに基づきます。
+
+- `pb`サフィックスは一般に`go_proto_library`のルールに使用されます。
+- `grpc`サフィックスは一般に`go_grpc_library`のルールに使用されます。
+一般に、短い 1 文字または 2 文字のプレフィックスが使用されます。
+
+```go
+// Good:
+import (
+    fspb "path/to/package/foo_service_go_proto"
+    fsgrpc "path/to/package/foo_service_go_grpc"
+)
+```
+
+パッケージが使用するプロトが 1 つだけである場合、あるいはパッケージがそのプロトと密接に結びついている場合は、プレフィックスを省略することができます。
+
+```go
+import (
+    pb "path/to/package/foo_service_go_proto"
+    grpc "path/to/package/foo_service_go_grpc"
+)
+```
+
+プロトのシンボルが一般的であったり、あまり自己記述的でない場合、あるいはパッケージ名を頭文字で短くすることが不明確な場合、短い単語をプレフィックスとして使用すれば十分です。
+
+```go
+// Good:
+import (
+    mapspb "path/to/package/maps_go_proto"
+)
+```
+
+この場合、当該コードがまだ地図と明確に関連していない場合は、`mapspb.Address`の方が`mpb.Address`よりも明確かもしれません。
