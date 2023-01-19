@@ -575,3 +575,79 @@ Goでは、[エラーは値](https://go.dev/blog/errors-are-values)です。エ�
 - [GoTip #89: 正規のステータスコードをエラーとして使用する場合](https://google.github.io/styleguide/go/index.html#gotip)
 - [GoTip #48: エラーのセンチネル値](https://google.github.io/styleguide/go/index.html#gotip)
 - [GoTip #13: チェックのためのエラーの設計](https://google.github.io/styleguide/go/index.html#gotip)
+
+### エラー構造
+
+呼び出し元がエラーを調べる必要がある場合（たとえば、異なるエラー状態を区別するためなど）、 呼び出し元が文字列のマッチングを行うのではなく、 プログラムでそれを行えるようにエラー値の構造を指定します。このアドバイスは、プロダクションコードだけでなく、 さまざまなエラー条件を扱うテストにも当てはまります。
+
+最も単純な構造のエラーは、パラメータ化されていないグローバルな値です。
+
+```go
+type Animal string
+
+var (
+    // ErrDuplicateは動物がすでに目撃されている場合に発生します。
+    ErrDuplicate = errors.New("duplicate")
+
+    // ErrMarsupialは私たちがオーストラリア以外の有袋類にアレルギーがあるために発生します。
+    // すみません。
+    ErrMarsupial = errors.New("marsupials are not supported")
+)
+
+func pet(animal Animal) error {
+    switch {
+    case seen[animal]:
+        return ErrDuplicate
+    case marsupial(animal):
+        return ErrMarsupial
+    }
+    seen[animal] = true
+    // ...
+    return nil
+}
+```
+
+呼び出し側は、この関数から返されるエラー値を既知のエラー値の1つと比較するだけでよいのです。
+
+```go
+// Good:
+func handlePet(...) {
+    switch err := process(an); err {
+    case ErrDuplicate:
+        return fmt.Errorf("feed %q: %v", an, err)
+    case ErrMarsupial:
+        // 代わりに仲間での復旧を試みます
+        alternate = an.BackupAnimal()
+        return handlePet(..., alternate, ...)
+    }
+}
+```
+
+上記はセンチネル値を使っており、誤差は期待値と（`==`の意味で）等しくなければなりません。これは多くの場合、完全に適切です。もし`process`がラップされたエラーを返す場合（後述）、[`errors.Is`](https://pkg.go.dev/errors#Is)を使うことができます。
+
+```go
+// Good:
+func handlePet(...) {
+    switch err := process(an); {
+    case errors.Is(err, ErrDuplicate):
+        return fmt.Errorf("feed %q: %v", an, err)
+    case errors.Is(err, ErrMarsupial):
+        // ...
+    }
+}
+```
+
+エラーを文字列形式で区別しようとしないでください。（詳しくは[Go Tip #13: チェックのためのエラーの設計](https://google.github.io/styleguide/go/index.html#gotip)をご参照ください。）
+
+```go
+// Bad:
+func handlePet(...) {
+    err := process(an)
+    if regexp.MatchString(`duplicate`, err.Error()) {...}
+    if regexp.MatchString(`marsupial`, err.Error()) {...}
+}
+```
+
+呼び出し側がプログラム的に必要とする追加の情報がエラーの中にある場合、それは理想的には構造的に提示されるべきです。たとえば、[`os.PathError`](https://pkg.go.dev/os#PathError)型は、呼び出し側が簡単にアクセスできる構造体フィールドに失敗した操作のパス名を配置するようにドキュメント化されています。
+
+たとえば、エラーコードと詳細文字列を含むプロジェクト構造体など、他のエラー構造体を適切に使用することができます。[`status`](https://pkg.go.dev/google.golang.org/grpc/status)パッケージは一般的なカプセル化手法です。この手法を選択した場合（強制ではありません）、[正規コード](https://pkg.go.dev/google.golang.org/grpc/codes)を使用します。ステータスコードを使用するのが正しい選択かどうかを知るには、 [Go Tip #89: 正規のステータスコードをエラーとしていつ使うべきか](https://google.github.io/styleguide/go/index.html#gotip)をご参照ください。
