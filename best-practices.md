@@ -651,3 +651,96 @@ func handlePet(...) {
 呼び出し側がプログラム的に必要とする追加の情報がエラーの中にある場合、それは理想的には構造的に提示されるべきです。たとえば、[`os.PathError`](https://pkg.go.dev/os#PathError)型は、呼び出し側が簡単にアクセスできる構造体フィールドに失敗した操作のパス名を配置するようにドキュメント化されています。
 
 たとえば、エラーコードと詳細文字列を含むプロジェクト構造体など、他のエラー構造体を適切に使用することができます。[`status`](https://pkg.go.dev/google.golang.org/grpc/status)パッケージは一般的なカプセル化手法です。この手法を選択した場合（強制ではありません）、[正規コード](https://pkg.go.dev/google.golang.org/grpc/codes)を使用します。ステータスコードを使用するのが正しい選択かどうかを知るには、 [Go Tip #89: 正規のステータスコードをエラーとしていつ使うべきか](https://google.github.io/styleguide/go/index.html#gotip)をご参照ください。
+
+### エラーの追加情報
+
+エラーを返す関数は、そのエラー値を有用なものにするよう努めなければなりません。多くの場合、その関数はコールチェーンの途中にあり、単にその関数が呼び出した他の関数（おそらく他のパッケージのもの）からエラーを伝搬しているだけです。しかし、プログラマは、重複する情報や無関係な情報を追加することなく、エラーの中に十分な情報があることを確認する必要があります。不安な場合は、開発中にエラー条件をトリガーしてみましょう。これは、エラーの観測者（人間またはコード）が最終的に何を得るかを評価する良い方法です。
+
+慣習や良いドキュメントが助けになります。たとえば、標準パッケージの`os`は、エラーにパス情報が含まれることを明記しています（パス情報が利用可能な場合）。これは便利なスタイルです。なぜなら、エラーを返す呼び出し側は、失敗した関数をすでに提供していたという情報で注釈をつける必要がないからです。
+
+```go
+// Good:
+if err := os.Open("settings.txt"); err != nil {
+    return err
+}
+
+// Output:
+//
+// open settings.txt: no such file or directory
+```
+
+エラーの意味について何か役に立つことがあれば、もちろんそれを追加することができます。ただ、コールチェーンのどのレベルがその意味を理解するのに一番適しているかを考えてみてください。
+
+```go
+// Good:
+if err := os.Open("settings.txt"); err != nil {
+    // このエラーの意味を私たちに伝えています。現在の関数は、
+    // 失敗する可能性のある複数のファイル操作を実行するかもしれないので、
+    // これらの注釈は、何がうまくいかなかったのかを呼び出し側への曖昧さを
+    // なくすのに役立つことに注意してください。
+    return fmt.Errorf("launch codes unavailable: %v", err)
+}
+
+// Output:
+//
+// launch codes unavailable: open settings.txt: no such file or directory
+```
+
+ここで冗長な情報と対比させます。
+
+```go
+// Bad:
+if err := os.Open("settings.txt"); err != nil {
+    return fmt.Errorf("could not open settings.txt: %w", err)
+}
+
+// Output:
+//
+// could not open settings.txt: open settings.txt: no such file or directory
+```
+
+伝播されたエラーに情報を追加する場合、エラーをラップするか、新しいエラーを表示することができます。`fmt.Errorf`の`%w`バーブでエラーをラップすると、呼び出し元が元のエラーのデータにアクセスできるようになります。これは非常に便利な場合もありますが、呼び出し側にとって誤解を招いたり、興味を持たなかったりする場合もあります。詳しくは、[エラーのラップに関するブログ記事](https://blog.golang.org/go1.13-errors)をご覧ください。また、エラーのラップはパッケージの API サーフェイスを拡張するため、 パッケージの実装を変更したときに破損する可能性があります。
+
+公開するエラーの基礎となる部分をドキュメント化し、それを検証するテストがない限り、`%w`の使用は避けたほうがよいでしょう。呼び出し側が`errors.Unwrap`や`errors.Is`などを呼び出すことを想定していないのであれば、わざわざ `%w`を使う必要はないでしょう。
+
+同じ考え方が[`*status.Status`](https://pkg.go.dev/google.golang.org/grpc/status)のような[構造化されたエラー](https://google.github.io/styleguide/go/best-practices#error-structure)にも当てはまります（[正規のコード](https://pkg.go.dev/google.golang.org/grpc/codes)を参照）。たとえば、サーバーがバックエンドに不正なリクエストを送信して `InvalidArgument`コードを受け取った場合、 このコードはクライアントに伝わらないようにする必要があります。代わりに、`Internal`という正規のコードをクライアントに返します。
+
+しかし、エラーに注釈を付けると、自動ログシステムがエラーのステータスペイロードを保持するのに役立ちます。たとえば、内部関数ではエラーに注釈を付けることが適切です。
+
+```go
+// Good:
+func (s *Server) internalFunction(ctx context.Context) error {
+    // ...
+    if err != nil {
+        return fmt.Errorf("couldn't find remote file: %w", err)
+    }
+}
+```
+
+システム境界に直接あるコード（典型的にはRPC、IPC、ストレージなど）は、標準的なエラー空間を使用してエラーを報告する必要があります。ドメイン固有のエラーを処理し、それを標準的に表現するのは、ここでのコードの責任で す。たとえば、
+
+```go
+// Bad:
+func (*FortuneTeller) SuggestFortune(context.Context, *pb.SuggestionRequest) (*pb.SuggestionResponse, error) {
+    // ...
+    if err != nil {
+        return nil, fmt.Errorf("couldn't find remote file: %w", err)
+    }
+}
+```
+
+```go
+// Good:
+import (
+    "google.golang.org/grpc/codes"
+    "google.golang.org/grpc/status"
+)
+func (*FortuneTeller) SuggestFortune(context.Context, *pb.SuggestionRequest) (*pb.SuggestionResponse, error) {
+    // ...
+    if err != nil {
+        // あるいは、呼び出し側がアンラップすることを意図したエラーを意図的にラップする場合は、
+        // fmt.Errorfと%wバーブを使用します。
+        return nil, status.Errorf(codes.Internal, "couldn't find fortune database", status.ErrInternal)
+    }
+}
+```
