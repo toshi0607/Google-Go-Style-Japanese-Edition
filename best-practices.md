@@ -744,3 +744,58 @@ func (*FortuneTeller) SuggestFortune(context.Context, *pb.SuggestionRequest) (*p
     }
 }
 ```
+
+### エラー中の%wの位置
+
+エラー文字列の末尾に`%w`を置くことを推奨します。
+
+エラーは[`%w`バーブ](https://blog.golang.org/go1.13-errors)でラップするか、`Unwrap() error`を実装した[構造化エラー](https://google.github.io/styleguide/go/index.html#gotip)（例: [`fs.PathError`](https://pkg.go.dev/io/fs#PathError)）の中に入れることができます。
+
+ラップされたエラーはエラーチェーンを形成します。ラップの各レイヤーは、エラーチェーンの先頭に新しいエントリを追加します。エラーチェーンは、`Unwrap() error`メソッドでたどることができます。たとえば
+
+```go
+err1 := fmt.Errorf("err1")
+err2 := fmt.Errorf("err2: %w", err1)
+err3 := fmt.Errorf("err3: %w", err2)
+```
+
+つぎのようなエラーチェーンを形成します。
+
+```
+flowchart LR
+  err3 == err3 wraps err2 ==> err2;
+  err2 == err2 wraps err1 ==> err1;
+```
+
+`%w`バーブがどこに置かれるかにかかわらず、返されるエラーは常にエラー連鎖の先頭を表し、`%w`は次の子で す。同様に、`Unwrap() error`は、常に新しいものから最も古いものへと エラーチェーンをたどります。
+
+しかし、`%w`バーブの位置は、エラーチェーンの出力が新しいものから古いもの、古いものから新しいもの、またはそのどちらでもないものに影響します。
+
+```go
+// Good:
+err1 := fmt.Errorf("err1")
+err2 := fmt.Errorf("err2: %w", err1)
+err3 := fmt.Errorf("err3: %w", err2)
+fmt.Println(err3) // err3: err2: err1
+// err3は、新しいものから古いものへと表示されるエラーチェーンです。
+```
+
+```go
+// Bad:
+err1 := fmt.Errorf("err1")
+err2 := fmt.Errorf("%w: err2", err1)
+err3 := fmt.Errorf("%w: err3", err2)
+fmt.Println(err3) // err1: err2: err3
+// err3は、最新から最古へのエラーチェーンで、最も古いものから最も新しいものへと表示されます。
+```
+
+```go
+// Bad:
+err1 := fmt.Errorf("err1")
+err2 := fmt.Errorf("err2-1 %w err2-2", err1)
+err3 := fmt.Errorf("err3-1 %w err3-2", err2)
+fmt.Println(err3) // err3-1 err2-1 err1 err2-2 err3-2
+// err3 は最新から最古へのエラーチェーンで、表示は最新から最古でも最古から最新でもありません。
+```
+
+したがって、エラーテキストがエラーチェーンの構造を反映するように、`%w`バーブを最後に置き、`[...]: %w`という形式にすることが望ましいです。
