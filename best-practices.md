@@ -912,3 +912,69 @@ func Sprintf(format string, data ...interface{}) string
 
 - [GoTip #41: 関数呼び出しのパラメータを特定する](https://google.github.io/styleguide/go/index.html#gotip)
 - [GoTip #51: 設定のためのパターン](https://google.github.io/styleguide/go/index.html#gotip)
+
+#### コンテキスト
+
+context 引数をキャンセルすると、それが提供される関数に割り込むことが暗示されます。もしその関数がエラーを返すことができれば、慣習的に`ctx.Err()`となります。
+
+この事実は改めて説明する必要ありません。
+
+```go
+// Bad:
+// Runはワーカーの実行ループを実行します。
+//
+// このメソッドはコンテキストがキャンセルされるまで仕事を処理し、
+// それに応じてエラーを返します。
+func (Worker) Run(ctx context.Context) error
+```
+
+暗示されているため、以下のようにするのがよいでしょう。
+
+```go
+// Good:
+// Runはワーカーの実行ループを実行します。
+func (Worker) Run(ctx context.Context) error
+```
+
+コンテキストの動作が異なる場合や明らかでない場合は、明示的にドキュメント化する必要があります。
+
+- コンテキストがキャンセルされたときに、ctx.Err() 以外のエラーを返す場合
+
+```go
+// Good:
+// Runはワーカーの実行ループを実行します。
+//
+// コンテキストがキャンセルされた場合、Runはnilエラーを返します。
+func (Worker) Run(ctx context.Context) error
+```
+
+- その機能が他の機構により中断されたり、ライフタイムに影響を及ぼす可能性がある場合
+
+```go
+// Good:
+// Run executes the worker's run loop.
+//
+// Runプロセスはコンテキストがキャンセルされるか、Stopが呼ばれるまで動作します。
+// コンテキストのキャンセルは内部で非同期に処理されるため、すべての作業が停止する前にrunが返ることがあります。
+// Stopメソッドは同期で、runループのすべての操作が終了するまで待機します。
+// Stopを使用するとシャットダウンすることができます。
+func (Worker) Run(ctx context.Context) error
+
+func (Worker) Stop()
+```
+
+- この関数が、コンテキストのライフタイム、系統、または付属の値について特別な期待を持っている場合。
+
+```go
+// Good:
+// NewReceiver は、指定されたキューに送信されたメッセージの受信を開始します。
+// このコンテキストにはデッドラインがあってはなりません。
+func NewReceiver(ctx context.Context) *Receiver
+
+// Principal は電話をかけた当事者の名前を返します。
+// コンテキストには、security.NewContext から値を付与する必要があります。
+func Principal(ctx context.Context) (name string, ok bool)
+```
+
+  **警告** 呼び出す側にそのような要求（コンテキストに期限がないなど）をするようなAPIを設計することは避けてください。上記は、避けられない場合にどのようにドキュメント化するかの一例に過ぎず、このパターンを推奨するものではありません。
+
