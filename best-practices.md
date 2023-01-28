@@ -1087,3 +1087,7 @@ func (*Ticker) Stop()
 //    body, err := io.ReadAll(resp.Body)
 func (c *Client) Get(url string) (resp *Response, err error)
 ```
+
+### プレビュー
+
+Goは[ドキュメントサーバー](https://pkg.go.dev/golang.org/x/pkgsite/cmd/pkgsite)を備えています。コードレビューの前と途中の両方で、あなたのコードが生成するドキュメントをプレビューすることが推奨されます。これは、[godocのフォーマット](#godocのフォーマット)が正しくレンダリングされることを検証するのに役立ちます。
