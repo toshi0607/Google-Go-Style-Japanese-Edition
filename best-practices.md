@@ -1019,7 +1019,6 @@ func (*Cache) Lookup(key string) (data []byte, ok bool)
 
 なぜでしょうか？キーを検索するときにキャッシュにヒットすると、内部でLRUキャッシュが更新されます。これがどのように実装されているかは、すべての読者にとって明らかではないかもしれません。
 
-
 - APIが同期を提供する場合
 
 ```go
@@ -1054,3 +1053,37 @@ type Watcher interface {
 ```
 
 なぜでしょうか？APIが複数のゴルーチンに使われても安全かどうかは、その契約の一部です。
+
+#### クリーンアップ
+
+APIが持つ明示的なクリーンアップ要件をドキュメント化してください。そうしないと、呼び出し元がAPIを正しく使えず、リソースリークやその他のバグにつながる可能性があるからです。
+
+呼び出し側に任されたクリーンアップを呼び出します。
+
+```go
+// Good:
+// NewTickerは、各ティック後にチャンネルの現在時刻を送信するチャンネルを含む新しいTickerを返します。
+//
+// 終了後にTickerの関連リソースを解放するためにStopを呼び出してください。
+func NewTicker(d Duration) *Ticker
+
+func (*Ticker) Stop()
+```
+
+リソースのクリーンアップ方法が不明確な可能性がある場合、その方法を説明してください。
+
+```go
+// Good:
+// Getは指定されたURLへのGETを発行します。
+//
+// errがnilのとき、respは常にnilでないresp.Bodyを持ちます。
+// 呼び出し側はresp.Bodyからの読み込みが終了したらresp.Bodyを閉じる必要があります。
+//
+//    resp, err := http.Get("http://example.com/")
+//    if err != nil {
+//        // handle error
+//    }
+//    defer resp.Body.Close()
+//    body, err := io.ReadAll(resp.Body)
+func (c *Client) Get(url string) (resp *Response, err error)
+```
