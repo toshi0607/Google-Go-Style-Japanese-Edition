@@ -1204,3 +1204,80 @@ i := 42
 // Bad:
 var i = 42
 ```
+
+### 非ポインタのゼロ値
+
+以下の宣言では、[ゼロ値](https://golang.org/ref/spec#The_zero_value)を使用しています。
+
+```go
+// Good:
+var (
+    coords Point
+    magic  [4]byte
+    primes []int
+)
+```
+
+ゼロ値を使って値を宣言するのは、後で使えるように空の値を伝えるときです。明示的な初期化で複合リテラルを使用すると、煩雑になる可能性があります。
+
+```go
+// Bad:
+var (
+    coords = Point{X: 0, Y: 0}
+    magic  = [4]byte{0, 0, 0, 0}
+    primes = []int(nil)
+)
+```
+
+ゼロ値宣言の一般的な適用例としては、アンマーシャルの際に変数を出力先として使用する場合があります。
+
+```go
+// Good:
+var coords Point
+if err := json.Unmarshal(data, &coords); err != nil {
+```
+
+構造体の中にロックや[コピーしてはいけない](decisions.md#コピー)フィールドが必要な場合、それを値型にしてゼロ値初期化の利点を活用することができます。ただし、この場合、含む型は値ではなくポインタを介して渡さなければなりません。この型に対するメソッドはポインタのレシーバを受け取らなければなりません。
+
+```go
+// Good:
+type Counter struct {
+    // このフィールドは、"*sync.Mutex "である必要はありません。
+    // しかし、ユーザーはCounterではなく、*Counterオブジェクトを渡さなければなりません。
+    mu   sync.Mutex
+    data map[string]int64
+}
+
+// コピー防止のため、ポインタのレシーバであることに注意してください。
+func (c *Counter) IncrementBy(name string, n int64)
+```
+
+複合体（構造体や配列など）のローカル変数にコピー不可能なフィールドがあっても、値型を使用してもかまいません。しかし、複合体が関数から返される場合、あるいは複合体へのアクセスが最終的にアドレスを必要とする場合、その変数を最初からポインタ型として宣言しておくことを優先してください。同様に、protobufもポインタ型として宣言すべきです。
+
+```go
+// Good:
+func NewCounter(name string) *Counter {
+    c := new(Counter) // "&Counter{}" でもかまいません。
+    registerCounter(name, c)
+    return c
+}
+
+var myMsg = new(pb.Bar) // もしくは "&pb.Bar{}".
+```
+
+これは、`*pb.Something`は[`proto.Message`](https://pkg.go.dev/google.golang.org/protobuf/proto#Message)を満たすのに対し、`pb.Something`は満たさないからです。
+
+```go
+// Bad:
+func NewCounter(name string) *Counter {
+    var c Counter
+    registerCounter(name, &c)
+    return &c
+}
+
+var myMsg = pb.Bar{}
+```
+
+**重要**: マップ型は、変更する前に明示的に初期化する必要があります。しかし、ゼロ値のマップからの読み込みは全く問題ありません。
+
+マップ型とスライス型については、コードが特にパフォーマンスに敏感で、サイズが事前に分かっている場合、[サイズヒント](#サイズヒント)のセクションを参照してください。
