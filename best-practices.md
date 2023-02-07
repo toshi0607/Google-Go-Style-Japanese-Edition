@@ -1374,3 +1374,76 @@ APIを設計する際には、シグネチャが複雑化している設定可�
 以下の推奨事項は、主にエクスポートされたAPIに適用されるもので、エクスポートされていないAPIよりも高い水準にあります。これらのテクニックは、あなたのユースケースには必要ないかもしれません。自分の判断で、[明確さ](guide.md#明確さ)と[最小限のメカニズム](guide.md#最小限のメカニズム)という原則のバランスを取ってください。
 
 こちらもご覧ください。[Go Tip #24: Use Case-Specific Constructions](https://google.github.io/styleguide/go/index.html#gotip)
+
+### オプション構造体
+
+オプション構造体は、関数やメソッドの引数の一部または全部を集めた構造体型で、関数やメソッドの最後の引数として渡されます（この構造体は、エクスポートされた関数で使用される場合のみエクスポートする必要があります）。
+
+オプション構造体を使用すると、多くの利点があります。
+
+- 構造体リテラルには、各引数のフィールドと値の両方が含まれているため、自己文書化され、入れ違えしにくくなります。
+- 無関係なフィールドや「デフォルト」のフィールドを省略することができます。
+- 呼び出し元は、オプション構造体を共有し、それを操作するヘルパーを書くことができます。
+- 構造体は、関数の引数よりもフィールドごとのドキュメントがすっきりします。
+- オプション構造体は、呼び出し元に影響を与えることなく、時間の経過とともに大きくすることができます。
+
+以下は、改善できる可能性のある関数の例です。
+
+```go
+// Bad:
+func EnableReplication(ctx context.Context, config *replicator.Config, primaryRegions, readonlyRegions []string, replicateExisting, overwritePolicies bool, replicationInterval time.Duration, copyWorkers int, healthWatcher health.Watcher) {
+    // ...
+}
+```
+
+上の関数をオプション構造体で書き直すと、次のようになります。
+
+```go
+// Good:
+type ReplicationOptions struct {
+    Config              *replicator.Config
+    PrimaryRegions      []string
+    ReadonlyRegions     []string
+    ReplicateExisting   bool
+    OverwritePolicies   bool
+    ReplicationInterval time.Duration
+    CopyWorkers         int
+    HealthWatcher       health.Watcher
+}
+
+func EnableReplication(ctx context.Context, opts ReplicationOptions) {
+    // ...
+}
+```
+
+この関数は別のパッケージで呼び出すことができます。
+
+```go
+// Good:
+func foo(ctx context.Context) {
+    // 複雑な呼び出し:
+    storage.EnableReplication(ctx, storage.ReplicationOptions{
+        Config:              config,
+        PrimaryRegions:      []string{"us-east1", "us-central2", "us-west3"},
+        ReadonlyRegions:     []string{"us-east5", "us-central6"},
+        OverwritePolicies:   true,
+        ReplicationInterval: 1 * time.Hour,
+        CopyWorkers:         100,
+        HealthWatcher:       watcher,
+    })
+
+    // シンプルな呼び出し:
+    storage.EnableReplication(ctx, storage.ReplicationOptions{
+        Config:         config,
+        PrimaryRegions: []string{"us-east1", "us-central2", "us-west3"},
+    })
+}
+```
+
+注意: [コンテキストはオプション構造体に含まれることはありません。](decisions.md#コンテキスト)
+
+このオプションは、以下のいくつかに当てはまる場合に好まれることが多いです。
+
+- すべての呼び出し元が、ひとつ以上のオプションを指定する必要がある。
+- 多数の呼び出し元が多くのオプションを指定する必要がある。
+- オプションがユーザーの呼び出す複数の関数で共有される。
