@@ -554,7 +554,7 @@ Goでは、[エラーは値](https://go.dev/blog/errors-are-values)です。エ�
 
 - 人間に表示するための診断情報に変換される
 - メンテナによる使用される
-- エンドユーザに解釈される
+- エンドユーザーに解釈される
 
 エラーメッセージは、ログメッセージ、エラーダンプ、レンダリングされたUIなど、さまざまな場面で表示されます。
 
@@ -992,7 +992,7 @@ Goのユーザーは、概念的に読み取り専用の操作は並行使用に
 func (*Buffer) Len() int
 ```
 
-しかし、変更操作は、並行使用に対して安全であることが仮定されていないため、ユーザは同期を考慮する必要があります。
+しかし、変更操作は、並行使用に対して安全であることが仮定されていないため、ユーザーは同期を考慮する必要があります。
 
 同様に、並行処理に関する余分な記述は、ここでは安全に削除することができます。
 
@@ -1034,7 +1034,7 @@ func NewFortuneTellerClient(cc *rpc.ClientConn) *FortuneTellerClient
 
 **注意**: APIが型であり、APIが全体として同期を提供する場合、慣習的に型定義のみがセマンティクスをドキュメント化します。
 
-- APIがユーザが実装した型のインターフェースを利用し、インターフェースの利用者が特定の並行処理を要求している場合
+- APIがユーザーが実装した型のインターフェースを利用し、インターフェースの利用者が特定の並行処理を要求している場合
 
 ```go
 // Good:
@@ -1447,3 +1447,119 @@ func foo(ctx context.Context) {
 - すべての呼び出し元が、ひとつ以上のオプションを指定する必要がある。
 - 多数の呼び出し元が多くのオプションを指定する必要がある。
 - オプションがユーザーの呼び出す複数の関数で共有される。
+
+### 可変長引数オプション
+
+可変長引数オプションを使って、関数の可変長引数(...)パラメータに渡すことができるクロージャを返すエクスポートされた関数が作成されます。関数はそのパラメータとしてオプションの値（もしあれば）を受け取り、返されたクロージャは、入力に基づいて更新される変更可能な参照（通常は構造体型へのポインタ）を受け取ります。
+
+可変長引数オプションを使うと、多くの利点があります。
+
+- オプションは、設定が必要ないときに呼び出し元でスペースをとりません。
+- オプションは値なので、呼び出し元はそれを共有したり、ヘルパーを書いたり、蓄積したりすることができます。
+- オプションは複数のパラメータを受け付けることができます（例: `cartesian.Translate(dx, dy int) TransformOption`）。
+- オプション関数は、godocでオプション群をまとめるために名前付き型を返すことができます。
+- パッケージは、サードパーティのパッケージが独自のオプションを定義することを許可（または禁止）することができます。
+
+**注意**: 可変長引数オプションを使用するには、かなりの量の追加コードが必要なため（次の例を参照してください）、オーバーヘッドを上回るメリットがある場合にのみ使用されるべきです。
+
+以下は、改善される可能性のある関数の例です。
+
+```go
+// Bad:
+func EnableReplication(ctx context.Context, config *placer.Config, primaryCells, readonlyCells []string, replicateExisting, overwritePolicies bool, replicationInterval time.Duration, copyWorkers int, healthWatcher health.Watcher) {
+  ...
+}
+```
+
+上の例は、可変長引数オプションを使って次のように書き換えることができます。
+
+```go
+// Good:
+type replicationOptions struct {
+    readonlyCells       []string
+    replicateExisting   bool
+    overwritePolicies   bool
+    replicationInterval time.Duration
+    copyWorkers         int
+    healthWatcher       health.Watcher
+}
+
+// ReplicationOptionはEnableReplicationを設定します。
+type ReplicationOption func(*replicationOptions)
+
+// ReadonlyCellsは、追加でデータの読み取り専用の複製を持つべきセルを追加します。
+//
+// このオプションを複数回渡すと、読み取り専用のセルが追加されます。
+//
+// Default: なし
+func ReadonlyCells(cells ...string) ReplicationOption {
+    return func(opts *replicationOptions) {
+        opts.readonlyCells = append(opts.readonlyCells, cells...)
+    }
+}
+
+// ReplicateExistingは、プライマリーセルに既に存在するファイルを複製するかどうかを制御します。
+// そうでない場合は、新しく追加されたファイルだけが のみがレプリケーションの候補となります。
+//
+// このオプションを再度渡すと、以前の値が上書きされます。
+//
+// Default: false
+func ReplicateExisting(enabled bool) ReplicationOption {
+    return func(opts *replicationOptions) {
+        opts.replicateExisting = enabled
+    }
+}
+
+// ... 他のオプション ...
+
+// DefaultReplicationOptionsは、EnableReplicationに渡されたオプションを適用する前のデフォルト値を制御します。
+var DefaultReplicationOptions = []ReplicationOption{
+    OverwritePolicies(true),
+    ReplicationInterval(12 * time.Hour),
+    CopyWorkers(10),
+}
+
+func EnableReplication(ctx context.Context, config *placer.Config, primaryCells []string, opts ...ReplicationOption) {
+    var options replicationOptions
+    for _, opt := range DefaultReplicationOptions {
+        opt(&options)
+    }
+    for _, opt := range opts {
+        opt(&options)
+    }
+}
+The function can then be called in a different package:
+
+// Good:
+func foo(ctx context.Context) {
+    // 複雑な呼び出し:
+    storage.EnableReplication(ctx, config, []string{"po", "is", "ea"},
+        storage.ReadonlyCells("ix", "gg"),
+        storage.OverwritePolicies(true),
+        storage.ReplicationInterval(1*time.Hour),
+        storage.CopyWorkers(100),
+        storage.HealthWatcher(watcher),
+    )
+
+    // シンプルな呼び出し:
+    storage.EnableReplication(ctx, config, []string{"po", "is", "ea"})
+}
+```
+
+以下の多くに該当する場合は、このオプションを選択します。
+
+- ほとんどの呼び出し元は、オプションを指定する必要がない。
+- ほとんどのオプションの使用頻度が低い。
+- オプションの数が多い。
+- オプションに引数が必要である。
+- オプションの設定に失敗したり、間違って設定したりする可能性がある（この場合、オプション関数はエラーを返します）。
+- オプションには多くのドキュメントが必要で、構造体に収めるのが難しい場合がある。
+- ユーザーや他のパッケージがカスタムオプションを提供することができる。
+
+このスタイルのオプションは、その値を示すために存在を利用するのではなく、パラメータを受け入れるべきです。存在の利用は、引数の動的合成をはるかに困難にします。例えば、二値の設定はブール値を受け入れるべきです (例えば、`rpc.EnableFailFast()`よりも`rpc.FailFast(enable bool)`が望ましいです)。列挙型のオプションは、列挙型の定数を受け入れるべきです（例えば、`log.CapacitorFormat()`よりも`log.Format(log.Capacitor)`が望ましいです）。プログラム的にどのオプションを渡すか選択しなければならないユーザーにとって、代替案ははるかに困難です。そのようなユーザーは、単にオプションに対する引数を変更するのではなく、パラメータの実際の構成を変更することを余儀なくされるます。すべてのユーザーがオプションの完全なセットを静的に知っていると思い込まないようにしましょう。
+
+一般に、オプションは順番に処理されるべきです。衝突があったり、非累積的なオプションが複数回渡されたりした場合は、 最後の引数が優先されるはずです。
+
+このパターンでは、オプション関数のパラメータは一般に公開されません。これは、オプションがパッケージ自体の中でしか定義できないようにするためです。これは良いデフォルトですが、他のパッケージがオプションを定義できるようにすることが適切な場合もあります。
+
+このオプションの使い方の詳細については、[Rob Pikeのブログ記事](http://commandcenter.blogspot.com/2014/01/self-referential-functions-and-design.html)と[Dave Cheneyの講演](https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis)を参照してください。
