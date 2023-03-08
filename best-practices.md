@@ -1668,3 +1668,96 @@ type FS interface {
 ```
 
 `fs.FS`の実装はよく知られていますが、Goの開発者はその一つを作成することが期待されます。ユーザが実装した`fs.FS`が正しいかどうかを検証するために、[`testing/fstest`](https://pkg.go.dev/testing/fstest)に[`fstest.TestFS`](https://pkg.go.dev/testing/fstest#TestFS)という汎用ライブラリが提供されています。このAPIは、実装をブラックボックスとして扱い、`io/fs`契約の最も基本的な部分が守られていることを確認します。
+
+#### 受け入れテストの書き方
+
+さて、受入テストとは何か、なぜ使うのかがわかったところで、チェスゲームをシミュレートするためのパッケージである`package chess`の受入テストを構築することを検討してみましょう。`chessの`ユーザは、`chess.Player`インターフェイスを実装することが期待されています。これらの実装は、私たちが検証する主要なものです。私たちの受け入れテストは、プレーヤーの実装が有効な手を打つのかどうかに関係し、その手が賢いかどうかには関係しません。
+
+1. 検証動作のための新しいパッケージを作成し、パッケージ名にtestという単語を追加するのが[通例](#テストヘルパーパッケージの作成)です（たとえば、`chesstest`）。
+2. 検証を行う関数を作成し、引数としてテスト対象の実装を受け取り、それを実行します。
+
+```go
+// ExercisePlayerは、ボード上の1ターンでPlayerの実装をテストします。
+// ボードそのものは、感覚と正しいかどうかをスポットでチェックします
+//
+// プレーヤーが提供されたボードのコンテキストで正しい動きをした場合、nilエラーを返します。
+// そうでない場合、ExercisePlayerはこのパッケージのエラーの1つを返し、
+// プレーヤーがどのように、そしてなぜ検証に失敗したかを示します。
+func ExercisePlayer(b *chess.Board, p chess.Player) error
+```
+
+テストでは、どの不変要素がどのように破られたかを記録する必要があります。設計では、失敗の報告について、2つの方法のどちらかを選択することができます。
+
+- **Fail fast**: 実装が不変要素に違反したらすぐにエラーを返します。
+
+これは最もシンプルなアプローチで、受け入れテストが素早く実行されることを想定している場合にはうまく機能します。単純なエラー[警告文](https://google.github.io/styleguide/go/index.html#gotip)や[カスタム型](https://google.github.io/styleguide/go/index.html#gotip)は、ここで簡単に使うことができ、逆に受け入れテストのテストを簡単にすることができます。
+
+```go
+for color, army := range b.Armies {
+    // チェックメイトでゲームが終了するため、キングは決してボードから離れないようにします。
+    if army.King == nil {
+        return &MissingPieceError{Color: color, Piece: chess.King}
+    }
+}
+```
+
+すべての失敗を集約する: すべての失敗を収集し、それらをすべて報告します。
+
+この方法は、[継続](decisions.md#継続)のガイダンスに似ており、受け入れテストがゆっくりと実行されることが予想される場合には、望ましいかもしれません。
+
+失敗をどのように集計するかは、ユーザーに個々の失敗を調査する能力を与えるか、あるいは自分自身にその能力を与えるかによって決まります（たとえば、受け入れテストのテストを行う場合など）。以下では、[エラーを集約する](https://google.github.io/styleguide/go/index.html#gotip)[カスタムエラー型](https://google.github.io/styleguide/go/index.html#gotip)を使用する例を示します。
+
+```go
+var badMoves []error
+
+move := p.Move()
+if putsOwnKingIntoCheck(b, move) {
+    badMoves = append(badMoves, PutsSelfIntoCheckError{Move: move})
+}
+
+if len(badMoves) > 0 {
+    return SimulationError{BadMoves: badMoves}
+}
+return nil
+```
+
+受け入れテストでは、テストが実施されるシステムの不変要素の破損を検出しない限り、`t.Fatal`を呼び出さないことで[継続](decisions.md#継続)のガイダンスを順守する必要があります。
+
+たとえば、`t.Fatal`は、通常通り[セットアップの失敗](#テストヘルパーのエラーハンドリング)などの例外的なケースに予約する必要があります。
+
+```go
+func ExerciseGame(t *testing.T, cfg *Config, p chess.Player) error {
+    t.Helper()
+
+    if cfg.Simulation == Modem {
+        conn, err := modempool.Allocate()
+        if err != nil {
+            t.Fatalf("no modem for the opponent could be provisioned: %v", err)
+        }
+        t.Cleanup(func() { modempool.Return(conn) })
+    }
+    // 受け入れテスト（ゲーム全体）の実行
+}
+```
+
+このテクニックは、簡潔で正規のバリデーションを作成するのに役立ちます。しかし、[アサーションに関するガイダンス](decisions.md#アサーションライブラリ)を回避するために、このテクニックを使おうとしてはいけません。
+
+最終的な成果物は、エンドユーザー向けにこのような形にする必要があります。
+
+```go
+// Good:
+package deepblue_test
+
+import (
+    "chesstest"
+    "deepblue"
+)
+
+func TestAcceptance(t *testing.T) {
+    player := deepblue.New()
+    err := chesstest.ExerciseGame(t, chesstest.SimpleGame, player)
+    if err != nil {
+        t.Errorf("deepblue player failed acceptance test: %v", err)
+    }
+}
+```
