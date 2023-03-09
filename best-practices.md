@@ -1761,3 +1761,13 @@ func TestAcceptance(t *testing.T) {
     }
 }
 ```
+
+#### 本物のトランスポートの利用
+
+コンポーネントの統合をテストする場合、特にHTTPやRPCがコンポーネント間の基本的なトランスポートとして使用される場合、バックエンドのテストバージョンに接続するために実際の基盤トランスポートを使用することをお勧めします。
+
+たとえば、テストしたいコード（「テスト対象システム」またはSUTと呼ばれることもあります）が、[長時間オペレーションAPI](https://pkg.go.dev/google.golang.org/genproto/googleapis/longrunning)を実装したバックエンドとやりとりしているとします。SUTをテストするには、[OperationsServer](https://pkg.go.dev/google.golang.org/genproto/googleapis/longrunning#OperationsServer)の[テストダブル](https://abseil.io/resources/swe-book/html/ch13.html#basic_concepts)（モック、スタブ、フェイクなど）に接続された本物の[OperationsClient](https://pkg.go.dev/google.golang.org/genproto/googleapis/longrunning#OperationsClient)を使用します。
+
+これは、クライアントの動作を正しく模倣するのが複雑であるため、クライアントを手作業で実装するよりも推奨されます。本番のクライアントとテスト専用のサーバーを使用することで、テストが可能な限り実際のコードを使用していることを確認できます。
+
+**ヒント**: 可能であれば、テスト対象のサービスの作者が提供するテスト用ライブラリを使用します。
