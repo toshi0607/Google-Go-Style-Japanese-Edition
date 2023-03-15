@@ -1782,3 +1782,116 @@ func TestAcceptance(t *testing.T) {
 - サブテストを使用している場合（`t.Run`の呼び出しの内部にある場合）は、現在のサブテストを終了し、テストケースを次のサブテストに進めるために`t.Fatal`を使用します。
 
 **警告：**`t.Fatal`などの関数を呼び出すことが常に安全ではないことに注意してください。[ここ](#別のgroutineからt-Fatalを呼ばない)を参照してください。
+
+
+### テストヘルパーのエラーハンドリング
+
+**注意**: このセクションでは、Goが用語として使う意味での[テストヘルパー](decisions.md#テストヘルパー)について説明しています。つまり、テストのセットアップとクリーンアップを実行する関数であり、一般的なアサーション機能ではありません。詳細については、「[テスト関数](#テストはテスト機能に任せる)」セクションを参照してください。
+
+テストヘルパーによって実行される操作は、失敗する場合があります。たとえば、ファイルを含むディレクトリをセットアップする場合、I/Oが失敗する可能性があります。テストヘルパーが失敗した場合、その失敗はしばしば、セットアップ前提条件が失敗したことを示します。この場合、ヘルパー内の`Fatal`関数のいずれかを呼び出すことをお勧めします。
+
+```go
+// Good:
+func mustAddGameAssets(t *testing.T, dir string) {
+    t.Helper()
+    if err := os.WriteFile(path.Join(dir, "pak0.pak"), pak0, 0644); err != nil {
+        t.Fatalf("Setup failed: could not write pak0 asset: %v", err)
+    }
+    if err := os.WriteFile(path.Join(dir, "pak1.pak"), pak1, 0644); err != nil {
+        t.Fatalf("Setup failed: could not write pak1 asset: %v", err)
+    }
+}
+```
+
+これにより、ヘルパーがエラーをテスト自体に返す場合よりも、呼び出し側がよりきれいになります。
+
+```go
+// Bad:
+func addGameAssets(t *testing.T, dir string) error {
+    t.Helper()
+    if err := os.WriteFile(path.Join(d, "pak0.pak"), pak0, 0644); err != nil {
+        return err
+    }
+    if err := os.WriteFile(path.Join(d, "pak1.pak"), pak1, 0644); err != nil {
+        return err
+    }
+    return nil
+}
+
+```
+
+**警告**: `t.Fatal`などを呼び出すことが常に安全であるとは限りません。詳細については、[ここ](#別のgroutineからt-Fatalを呼ばない)を参照してください。
+
+失敗メッセージには、何が起こったかの説明を含める必要があります。これは重要です。ヘルパーが生成するエラーの数が増えるほど、多くのユーザーにテストAPIを提供している可能性があります。テストが失敗した場合、ユーザーはどこで、なぜ失敗したのかを知る必要があります。
+
+**ヒント**: Go 1.14では、テストが完了するときに実行されるクリーンアップ関数を登録するために使用できる[`t.Cleanup`](https://pkg.go.dev/testing#T.Cleanup))関数が導入されました。この関数は、テストヘルパーでも機能します。テストヘルパーを簡素化するためのガイダンスについては、[GoTip＃4：テストのクリーンアップ](https://google.github.io/styleguide/go/index.html#gotip)を参照してください。
+
+下記のスニペットは、架空のファイル`paint_test.go`にある`(*testing.T).Helper`がGoテストの失敗報告にどのように影響するかを示しています。
+
+```go
+package paint_test
+
+import (
+    "fmt"
+    "testing"
+)
+
+func paint(color string) error {
+    return fmt.Errorf("no %q paint today", color)
+}
+
+func badSetup(t *testing.T) {
+    // これはt.Helperを呼び出すべきですが、呼び出されません。
+    if err := paint("taupe"); err != nil {
+        t.Fatalf("could not paint the house under test: %v", err) // line 15
+    }
+}
+
+func mustGoodSetup(t *testing.T) {
+    t.Helper()
+    if err := paint("lilac"); err != nil {
+        t.Fatalf("could not paint the house under test: %v", err)
+    }
+}
+
+func TestBad(t *testing.T) {
+    badSetup(t)
+    // ...
+}
+
+func TestGood(t *testing.T) {
+    mustGoodSetup(t) // line 32
+    // ...
+}
+
+```
+
+次に、実行したときのこの出力の例を示します。ハイライトされたテキストと、どのように異なるかに注目してください。
+
+```
+=== RUN   TestBad
+    paint_test.go:15: could not paint the house under test: no "taupe" paint today
+--- FAIL: TestBad (0.00s)
+=== RUN   TestGood
+    paint_test.go:32: could not paint the house under test: no "lilac" paint today
+--- FAIL: TestGood (0.00s)
+FAIL
+```
+
+`paint_test.go:15`のエラーは、`badSetup`で失敗したセットアップ関数の行を参照しています。
+
+`t.Fatalf("could not paint the house under test: %v", err)`
+
+一方、`paint_test.go:32`は、`TestGood`で失敗したテストの行を参照しています。
+
+`goodSetup(t)`
+
+正しく`(*testing.T).Helper`を使用すると、次の場合に失敗場所をよりよく特定することができます。
+
+- ヘルパー関数が大きくなっていく場合
+- ヘルパー関数が他のヘルパー関数を呼び出す場合
+- ヘルパー使用量がテスト関数で増加する場合
+
+**ヒント**: ヘルパーが`(*testing.T).Error`または`(*testing.T).Fatal`を呼び出す場合は、フォーマット文字列にいくつかのコンテキストを提供すると、何が間違っているのか、なぜ間違っているのかを判断するのに役立ちます。
+
+**ヒント**: ヘルパーが何も失敗しない場合は、`t.Helper`を呼び出す必要はありません。関数パラメータリストから`t`を削除してシグネチャを簡素化してください。
