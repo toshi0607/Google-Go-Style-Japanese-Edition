@@ -1,0 +1,20 @@
+name: check-upstream
+
+on:
+  schedule:
+    - cron: "0 21 * * 0" # 毎週月曜 6:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check upstream updates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/check-upstream.sh
