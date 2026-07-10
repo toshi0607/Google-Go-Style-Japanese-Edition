@@ -1,0 +1,25 @@
+{
+  "targets": [
+    {
+      "name": "Go Style Guide(guide.md)",
+      "upstream_repo": "google/styleguide",
+      "upstream_path": "go/guide.md",
+      "translation": "guide.md",
+      "baseline_sha": "e8424d77fc036672569da4313e0b46d00d78f48f"
+    },
+    {
+      "name": "Go Style Decisions(decisions.md)",
+      "upstream_repo": "google/styleguide",
+      "upstream_path": "go/decisions.md",
+      "translation": "decisions.md",
+      "baseline_sha": "9ae38d43e38a5b182092723d0f1295c3b80b1e06"
+    },
+    {
+      "name": "Go Style Best Practices(best-practices.md)",
+      "upstream_repo": "google/styleguide",
+      "upstream_path": "go/best-practices.md",
+      "translation": "best-practices.md",
+      "baseline_sha": "9ae38d43e38a5b182092723d0f1295c3b80b1e06"
+    }
+  ]
+}
